@@ -44,12 +44,15 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Ticket"
+<<<<<<< HEAD
         "422":
           description: Ungültige Query-Parameter (z. B. limit keine Zahl)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidierungsFehler"
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
     post:
       tags: [tickets]
       operationId: createTicket
@@ -67,18 +70,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ticket"
+<<<<<<< HEAD
         "400":
           description: Nicht parsbarer Request-Body
+=======
+        "422":
+          description: Ungültige Eingabe
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Fehler"
+<<<<<<< HEAD
         "422":
           description: Ungültige Eingabe (fehlende/fehlerhafte Felder)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidierungsFehler"
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 
   /tickets/{ticket_id}:
     get:
@@ -162,24 +173,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EskalationErgebnis"
+<<<<<<< HEAD
         "400":
           description: Nicht parsbarer Request-Body
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Fehler"
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
         "404":
           description: Ticket nicht gefunden
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Fehler"
+<<<<<<< HEAD
         "422":
           description: Ungültige Eingabe (z. B. grund zu kurz)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidierungsFehler"
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 
 components:
   schemas:
@@ -214,9 +231,12 @@ components:
         von:
           type: string
           format: email
+<<<<<<< HEAD
           # format: email allein ist zweideutig (IDN-Domains? Quoting?) —
           # das Pattern macht die Erwartung für alle Implementierungen exakt.
           pattern: "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
         betreff:
           type: string
           minLength: 1
@@ -250,6 +270,7 @@ components:
       properties:
         detail:
           type: string
+<<<<<<< HEAD
     # FastAPI/Pydantic-Validierungsfehler: detail ist hier ein ARRAY von
     # Einzelfehlern — nicht derselbe Shape wie "Fehler"! Genau solche Details
     # vergisst man leicht in der Spec (und schemathesis findet sie sofort).
@@ -270,3 +291,5 @@ components:
                 type: string
               type:
                 type: string
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206

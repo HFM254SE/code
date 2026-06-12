@@ -10,11 +10,18 @@ maschinell prüfen.
     # Doku unter http://localhost:8000/docs
 """
 
+<<<<<<< HEAD
 import re
 from enum import Enum
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field, field_validator
+=======
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, EmailStr, Field
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 
 from src.summarize import CATEGORIES, PRIORITIES  # eine Quelle der Wahrheit
 from src.ticket_loader import load_tickets
@@ -22,6 +29,7 @@ from src.triage import classify_and_prioritize
 
 app = FastAPI(title="LeineTech Ticket-API", version="1.0.0")
 
+<<<<<<< HEAD
 # Kategorien aus src/ als Enum, damit FastAPI den Query-Parameter validiert
 # wie die Spec es verlangt (Schema "Kategorie" ist dort ein Enum).
 KategorieEnum = Enum("KategorieEnum", {k: k for k in CATEGORIES}, type=str)
@@ -35,6 +43,9 @@ _STORE: dict[str, dict] = {t["id"]: t for t in load_tickets()}
 # (münchen.de), der JSON-Schema-Format-Check vieler Tools nicht. Die Spec
 # nagelt es deshalb per Pattern fest, und wir prüfen exakt dasselbe Pattern.
 EMAIL_PATTERN = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
+=======
+DATA = Path(__file__).resolve().parent.parent / "data" / "tickets.json"
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 
 
 class TicketEingabe(BaseModel):
@@ -42,6 +53,7 @@ class TicketEingabe(BaseModel):
     betreff: str = Field(min_length=1)
     text: str = Field(min_length=1)
 
+<<<<<<< HEAD
     @field_validator("von")
     @classmethod
     def _von_wie_in_der_spec(cls, v: str) -> str:
@@ -49,6 +61,8 @@ class TicketEingabe(BaseModel):
             raise ValueError("E-Mail muss dem Pattern der Spec entsprechen")
         return v
 
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 
 class Ticket(TicketEingabe):
     id: str = Field(pattern=r"^T-\d{4}$")
@@ -71,14 +85,24 @@ class Eskalation(BaseModel):
     grund: str = Field(min_length=3)
 
 
+<<<<<<< HEAD
 def _require(ticket_id: str) -> dict:
     ticket = _STORE.get(ticket_id)
+=======
+def _tickets() -> dict[str, dict]:
+    return {t["id"]: t for t in load_tickets()}
+
+
+def _require(ticket_id: str) -> dict:
+    ticket = _tickets().get(ticket_id)
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
     if ticket is None:
         raise HTTPException(status_code=404, detail=f"Ticket {ticket_id} nicht gefunden")
     return ticket
 
 
 @app.get("/tickets", response_model=list[Ticket], tags=["tickets"])
+<<<<<<< HEAD
 def list_tickets(
     request: Request,
     kategorie: KategorieEnum | None = None,
@@ -98,12 +122,23 @@ def list_tickets(
     tickets = list(_STORE.values())
     if kategorie:
         tickets = [t for t in tickets if classify_and_prioritize(t)[0] == kategorie.value]
+=======
+def list_tickets(kategorie: str | None = None, limit: int = 50):
+    tickets = list(load_tickets())
+    if kategorie:
+        tickets = [t for t in tickets if classify_and_prioritize(t)[0] == kategorie]
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
     return tickets[:limit]
 
 
 @app.post("/tickets", response_model=Ticket, status_code=201, tags=["tickets"])
 def create_ticket(eingabe: TicketEingabe):
+<<<<<<< HEAD
     next_num = max((int(tid[2:]) for tid in _STORE), default=1000) + 1
+=======
+    existing = _tickets()
+    next_num = max((int(tid[2:]) for tid in existing), default=1000) + 1
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
     new = {
         "id": f"T-{next_num}",
         "von": eingabe.von,
@@ -111,7 +146,10 @@ def create_ticket(eingabe: TicketEingabe):
         "text": eingabe.text,
         "erstellt": "2026-05-31",  # Demo: feste Eingangsdatum-Stub
     }
+<<<<<<< HEAD
     _STORE[new["id"]] = new
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
     return new
 
 

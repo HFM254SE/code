@@ -136,6 +136,7 @@ if __name__ == "__main__":
     if ticket is None:
         raise SystemExit(f"Ticket {ticket_id} nicht gefunden.")
     print(f"=== Agent bearbeitet {ticket_id}: {ticket['betreff']} ===\n")
+<<<<<<< HEAD
     try:
         print(handle_ticket(ticket))
     except Exception as exc:
@@ -145,6 +146,9 @@ if __name__ == "__main__":
                 "→ Läuft `ollama serve`? Modell da? `ollama pull qwen3:8b`"
             ) from exc
         raise
+=======
+    print(handle_ticket(ticket))
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
     from src.agent_tools import ESCALATIONS
 
     if ESCALATIONS:
