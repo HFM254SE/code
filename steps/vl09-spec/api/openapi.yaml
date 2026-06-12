@@ -1,0 +1,225 @@
+openapi: "3.1.0"
+info:
+  title: LeineTech Ticket-API
+  version: "1.0.0"
+  description: >
+    REST-API für das interne Support-Ticket-System der LeineTech GmbH.
+    Diese Spezifikation ist die Single Source of Truth: Server, Client und
+    KI-Coding-Assistenten leiten ihre Implementierung aus diesem Dokument ab.
+servers:
+  - url: http://localhost:8000
+    description: Lokaler Entwicklungsserver
+
+tags:
+  - name: tickets
+    description: Tickets anlegen, lesen, einordnen und eskalieren
+
+paths:
+  /tickets:
+    get:
+      tags: [tickets]
+      operationId: listTickets
+      summary: Alle Tickets auflisten
+      parameters:
+        - name: kategorie
+          in: query
+          required: false
+          description: Optional nach Kategorie filtern
+          schema:
+            $ref: "#/components/schemas/Kategorie"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Liste der Tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ticket"
+    post:
+      tags: [tickets]
+      operationId: createTicket
+      summary: Neues Ticket anlegen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketEingabe"
+      responses:
+        "201":
+          description: Ticket angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "422":
+          description: Ungültige Eingabe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fehler"
+
+  /tickets/{ticket_id}:
+    get:
+      tags: [tickets]
+      operationId: getTicket
+      summary: Ein Ticket lesen
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^T-[0-9]{4}$"
+      responses:
+        "200":
+          description: Das Ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "404":
+          description: Ticket nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fehler"
+
+  /tickets/{ticket_id}/triage:
+    post:
+      tags: [tickets]
+      operationId: triageTicket
+      summary: Ticket klassifizieren (Kategorie + Priorität)
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^T-[0-9]{4}$"
+      responses:
+        "200":
+          description: Klassifikationsergebnis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriageErgebnis"
+        "404":
+          description: Ticket nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fehler"
+
+  /tickets/{ticket_id}/escalate:
+    post:
+      tags: [tickets]
+      operationId: escalateTicket
+      summary: Ticket an einen Menschen eskalieren
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^T-[0-9]{4}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [grund]
+              properties:
+                grund:
+                  type: string
+                  minLength: 3
+      responses:
+        "202":
+          description: Eskalation angenommen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EskalationErgebnis"
+        "404":
+          description: Ticket nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fehler"
+
+components:
+  schemas:
+    Kategorie:
+      type: string
+      enum: [Hardware, Software, Zugang, Netzwerk, Abrechnung]
+    Prioritaet:
+      type: string
+      enum: [hoch, mittel, niedrig]
+    Ticket:
+      type: object
+      required: [id, von, betreff, text, erstellt]
+      properties:
+        id:
+          type: string
+          pattern: "^T-[0-9]{4}$"
+          examples: ["T-1001"]
+        von:
+          type: string
+          format: email
+        betreff:
+          type: string
+        text:
+          type: string
+        erstellt:
+          type: string
+          format: date
+    TicketEingabe:
+      type: object
+      required: [von, betreff, text]
+      properties:
+        von:
+          type: string
+          format: email
+        betreff:
+          type: string
+          minLength: 1
+        text:
+          type: string
+          minLength: 1
+    TriageErgebnis:
+      type: object
+      required: [id, kategorie, prioritaet]
+      properties:
+        id:
+          type: string
+        kategorie:
+          $ref: "#/components/schemas/Kategorie"
+        prioritaet:
+          $ref: "#/components/schemas/Prioritaet"
+    EskalationErgebnis:
+      type: object
+      required: [id, status, grund]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [eskaliert]
+        grund:
+          type: string
+    Fehler:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
