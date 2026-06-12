@@ -1,0 +1,14 @@
+# LeineTech Ticket-Triage — Abhaengigkeiten
+requests==2.32.3
+urllib3==2.2.2
+certifi==2024.7.4
+PyYAML==6.0.2
+Jinja2==3.1.4
+
+# LLM-Anbindung (VL 3): OpenAI-SDK, gegen Ollama ODER Cloud nutzbar
+openai==1.54.3
+
+# Entwicklung / Qualitaet
+pytest==8.3.3
+pylint==3.3.1
+flake8==7.1.1
