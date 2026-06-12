@@ -55,7 +55,10 @@ eval/golden.jsonl    Menschliche Soll-Labels für alle 30 Tickets
 src/                 Das Triage-Tool im jeweiligen Ausbauzustand
 tests/               pytest — Sicherheitsnetz bei (KI-)Refactorings
 labs/                Schritt-für-Schritt-Lab-Anleitungen
+<<<<<<< HEAD
 SETUP.md             Kurs-LLM-Endpunkt (Nirk HomeCloud) + Groq-Fallback einrichten
+=======
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 ```
 
 ## Für Lehrende: Branches bauen

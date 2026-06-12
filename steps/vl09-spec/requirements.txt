@@ -1,26 +1,45 @@
 # LeineTech Ticket-Triage — Abhaengigkeiten
+<<<<<<< HEAD
 requests==2.33.0
 urllib3==2.7.0
 certifi==2024.7.4
 PyYAML==6.0.2
 Jinja2==3.1.6
+=======
+requests==2.32.3
+urllib3==2.2.2
+certifi==2024.7.4
+PyYAML==6.0.2
+Jinja2==3.1.4
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 
 # LLM-Anbindung (VL 3): OpenAI-SDK, gegen Ollama ODER Cloud nutzbar
 openai==1.54.3
 
 # Agenten (VL 8): LangGraph als Orchestrierung + Ollama-Anbindung
 # (LangGraph/LangChain 1.0, stabil seit 10/2025)
+<<<<<<< HEAD
 langgraph==1.0.10
+=======
+langgraph==1.0.2
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 langchain==1.0.3
 langchain-ollama==0.3.10
 
 # Spec-Driven (VL 9): API aus OpenAPI-Spec + Drift-Prüfung
 fastapi==0.115.5
 uvicorn==0.32.1
+<<<<<<< HEAD
 schemathesis==4.21.5     # 4.x: OpenAPI 3.1 nativ; CLI nutzt --url statt --base-url
 email-validator==2.2.0   # fuer Pydantic EmailStr (Spec: format: email)
 
 # Entwicklung / Qualitaet
 pytest==9.0.3
+=======
+schemathesis==3.39.5
+
+# Entwicklung / Qualitaet
+pytest==8.3.3
+>>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 pylint==3.3.1
 flake8==7.1.1
