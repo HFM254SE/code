@@ -27,11 +27,7 @@ uvicorn api.app:app --reload                    # Referenz-Server → :8000/docs
 uvicorn api.drifted_server:app --port 8001      # driftet absichtlich
 
 # Drift maschinell finden:
-<<<<<<< HEAD
 schemathesis run api/openapi.yaml --url http://localhost:8001 --checks all
-=======
-schemathesis run api/openapi.yaml --base-url http://localhost:8001 --checks all
->>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 ```
 
 **Diskussionsstoff:** Warum ist die Spec „das Gesetz"? Was findet schemathesis
