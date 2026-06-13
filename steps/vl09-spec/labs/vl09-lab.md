@@ -12,11 +12,7 @@ messen, und Spec Drift sichtbar machen.
 
 ```bash
 cd leinetech
-<<<<<<< HEAD
 git checkout vl09-spec           # Spec, Referenz-Server & Drift-Server inklusive
-=======
-git checkout vl08-agent          # wir bauen auf dem Agenten-Stand auf
->>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 pip install -r requirements.txt  # zieht jetzt fastapi, uvicorn, schemathesis
 cat api/openapi.yaml             # die Spec lesen — das ist heute die Hauptrolle
 ```
@@ -31,11 +27,8 @@ In `api/openapi.yaml` liegt die vollständige Spezifikation der LeineTech
 Ticket-API (auflisten, anlegen, lesen, `triage`, `escalate`).
 
 **Aufgabe A — Code generieren:** Öffnet `api/openapi.yaml` in Cursor/Copilot.
-<<<<<<< HEAD
 Lasst in eine **neue Datei** `api/generated.py` generieren — und schaut euch
 `api/app.py` vorher *nicht* an (sonst kennt euer Assistent die Lösung auch).
-=======
->>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 Prompt:
 ```
 Generiere einen FastAPI-Server aus dieser OpenAPI-Spec. Pydantic-Models für
@@ -88,11 +81,7 @@ größten Effekt? Was fehlte?
 **Toolgestützt:**
 ```bash
 uvicorn api.drifted_server:app --port 8001 &
-<<<<<<< HEAD
 schemathesis run api/openapi.yaml --url http://localhost:8001 --checks all
-=======
-schemathesis run api/openapi.yaml --base-url http://localhost:8001 --checks all
->>>>>>> 65d16a8e1cc082fe3eb8374339203e0c8d578206
 ```
 
 **Manuelle Checkliste:**
