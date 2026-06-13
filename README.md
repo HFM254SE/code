@@ -1,36 +1,47 @@
-# LeineTech Ticket-Triage — `vl03-evaluation`
+# LeineTech Ticket-Triage — `vl06-guardrails`
 
-Endzustand des **Labs in VL 3**: Das Bauchgefühl („das LLM ist bestimmt
-besser") wird durch **Messung** ersetzt.
+Endzustand des **Labs in VL 6**: Die LLM-Pipeline aus VL 3 wird **angegriffen**
+(T-1030, das Prompt-Injection-Easter-Egg) und dann **gehärtet**.
 
-Neu gegenüber `vl03-llm-client`:
+Neu gegenüber `vl03-evaluation`:
 
-- `src/evaluate.py` — Use-Case-spezifische Evaluierung gegen das
-  **Golden Dataset** (`eval/golden.jsonl`, 30 von Menschen gelabelte Tickets):
-  Accuracy für Kategorie & Priorität plus Latenz, für Keyword-Regeln und
-  beliebige LLMs. Ergebnisse zusätzlich als `eval/results.csv`.
+- `src/guardrails.py` — zwei Verteidigungsschichten:
+  - **Input-Scan** (`scan_text`/`scan_ticket`): bekannte Injection-Muster
+    erkennen — bewusst **unvollständig** (Paraphrasen/Fremdsprachen rutschen
+    durch, siehe `eval/injections.jsonl`).
+  - **Output-Filter** (`filter_output`): PII und Secrets aus LLM-Antworten
+    maskieren — LLM-Output ist Untrusted Input.
+- `src/summarize.py` — gehärtet: Tickettext als Daten markiert (`<<<TICKET … TICKET>>>`),
+  nicht verhandelbare Sicherheitsregeln im System-Prompt, Injection-Verdacht
+  wird im Ergebnis markiert statt blind weiterverarbeitet.
+- `src/main.py` — neues Subkommando `scan`.
+- `eval/injections.jsonl` — 12 Angriffe (10 sollen erkannt werden, 2 bewusst
+  nicht: Paraphrase + Fremdsprache).
+- `tests/test_guardrails.py` — **offline** (kein LLM): Erkennungsrate UND
+  False-Positive-Rate gegen die echten Tickets.
 
 ## Ausführen
 
 ```bash
-python -m src.evaluate                       # nur Regeln (offline, < 1 s)
-python -m src.evaluate --llm                 # + llama3.2 über Ollama (10 Tickets)
-python -m src.evaluate --llm --all           # alle 30 Tickets (CPU: 10–15 min)
-LLM_MODEL=qwen2.5:3b python -m src.evaluate --llm    # anderes Modell
+python -m src.main scan                # Offline-Scan aller 30 Tickets → nur T-1030
+python -m src.main classify T-1030     # mit Härtung: Verdacht wird gemeldet
+python -m pytest tests/test_guardrails.py   # offline, kein Ollama nötig
 ```
 
-*(Default ist `--limit 10`, damit eine Runde im Lab ~1 Minute dauert; das
-Lab-Gerüst zum Selberbauen liegt unter `labs/templates/evaluate_skeleton.py`.)*
+Vergleich vorher/nachher (das ist der Lerneffekt):
 
-Typisches Bild (eure Zahlen variieren je nach Modell):
+```bash
+git checkout vl03-evaluation
+python -m src.main classify T-1030     # ungehärtet: LLM stuft evtl. "niedrig" ein
+git checkout vl06-guardrails
+python -m src.main classify T-1030     # gehärtet: bleibt "hoch", Verdacht markiert
+```
 
-- Keyword-Regeln: ~2/3 der Kategorien richtig, in Mikrosekunden, kostenlos
-- Kleines lokales LLM: deutlich besser, aber Sekunden pro Ticket
-- Cloud-Frontier-Modell: am besten — gegen Geld und Datenabfluss
+**Diskussionsstoff:** Der Scanner erkennt 10 von 12 Angriffen — die zwei
+Lücken (Paraphrase, Suaheli) sind Absicht. Warum ist Pattern-Matching allein
+keine Lösung? Warum braucht es zusätzlich Härtung im Prompt *und* einen
+Output-Filter (Defense in Depth)?
 
-**Diskussionsstoff:** Ab welcher Accuracy-Differenz lohnt sich der LLM-Einsatz?
-Wer zahlt die Latenz? Und was bedeutet das für die Deployment-Entscheidung
-(Cloud / On-Prem / Edge) aus der Vorlesung?
-
-> Hier endet der VL-3-Stand. Ab VL 4/5 (RAG) beantwortet das System Tickets
-> inhaltlich — mit der Knowledge Base in `docs/` als Wissensquelle.
+> Hier endet der VL-6-Stand. Ab VL 7/8 wird aus der Pipeline ein
+> **Tool-nutzender Agent** — mit der Knowledge Base aus `docs/` und einer
+> Eskalations-Funktion.
