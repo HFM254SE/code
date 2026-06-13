@@ -1,12 +1,14 @@
 # LeineTech Ticket-Triage — Abhaengigkeiten
-# (eingefroren von einem Kollegen, "lief doch" — seit 2021 nicht angefasst)
-requests==2.25.1
-urllib3==1.26.4
-certifi==2021.10.8
-PyYAML==5.3.1
-Jinja2==2.11.2
+# Aktualisiert in VL 1: alle bekannten CVEs der eingefrorenen Versionen behoben.
+# (requests/PyYAML/Jinja2 werden fuer die geplante Webhook-/Report-Erweiterung
+# vorgehalten; certifi/urllib3 sind transitive Pins von requests.)
+requests==2.33.0
+urllib3==2.7.0
+certifi==2024.7.4
+PyYAML==6.0.2
+Jinja2==3.1.6
 
 # Entwicklung / Qualitaet
-pytest==8.3.3
+pytest==9.0.3
 pylint==3.3.1
 flake8==7.1.1
