@@ -1,47 +1,47 @@
-# LeineTech Ticket-Triage — `vl06-guardrails`
+# LeineTech Ticket-Triage — `vl08-agent`
 
-Endzustand des **Labs in VL 6**: Die LLM-Pipeline aus VL 3 wird **angegriffen**
-(T-1030, das Prompt-Injection-Easter-Egg) und dann **gehärtet**.
+Endzustand des **Labs in VL 8**: Aus der Triage wird ein **Tool-nutzender
+Agent**. Er entscheidet selbst, welche Tools er aufruft (Ticket einordnen,
+Wissensbasis durchsuchen, an einen Menschen eskalieren) — der ReAct-Loop aus
+VL 7, hier als expliziter LangGraph-Graph.
 
-Neu gegenüber `vl03-evaluation`:
+Neu gegenüber `vl06-guardrails`:
 
-- `src/guardrails.py` — zwei Verteidigungsschichten:
-  - **Input-Scan** (`scan_text`/`scan_ticket`): bekannte Injection-Muster
-    erkennen — bewusst **unvollständig** (Paraphrasen/Fremdsprachen rutschen
-    durch, siehe `eval/injections.jsonl`).
-  - **Output-Filter** (`filter_output`): PII und Secrets aus LLM-Antworten
-    maskieren — LLM-Output ist Untrusted Input.
-- `src/summarize.py` — gehärtet: Tickettext als Daten markiert (`<<<TICKET … TICKET>>>`),
-  nicht verhandelbare Sicherheitsregeln im System-Prompt, Injection-Verdacht
-  wird im Ergebnis markiert statt blind weiterverarbeitet.
-- `src/main.py` — neues Subkommando `scan`.
-- `eval/injections.jsonl` — 12 Angriffe (10 sollen erkannt werden, 2 bewusst
-  nicht: Paraphrase + Fremdsprache).
-- `tests/test_guardrails.py` — **offline** (kein LLM): Erkennungsrate UND
-  False-Positive-Rate gegen die echten Tickets.
+- `src/knowledge_base.py` — leichtgewichtige Volltext-Suche über `docs/`
+  (bewusst **kein** Vektor-RAG — das ist Svens VL 4/5; hier nur ein Tool).
+- `src/agent_tools.py` — die drei Tools des Agenten als **gewöhnliche,
+  offline testbare** Funktionen: `kb_search`, `triage_ticket`,
+  `escalate_to_human` (+ `injection_check` als Nicht-LLM-Vorprüfung aus VL 6).
+- `src/agent.py` — der LangGraph-Agent: `guardrail → agent ⇄ tools → END`,
+  mit `recursion_limit` als Endlosschleifen-Schutz.
+- `tests/test_agent_tools.py` — **offline** (kein Ollama): KB-Treffer,
+  Tool-Verhalten, Eskalations-Protokoll, Injection-Vorprüfung.
+
+## Voraussetzung
+
+```bash
+pip install -r requirements.txt
+ollama pull qwen3:8b        # tool-fähig, ~5 GB; schwacher Laptop: qwen3:4b
+```
+
+> **Wichtig:** Tool-Calling braucht ein tool-fähiges Modell. `llama3.2:3b`
+> *kann* Tools aufrufen, tut es aber unzuverlässig — gut zum Lernen der
+> Mechanik, nicht für verlässliche Ergebnisse. Ab 8B (qwen3:8b, llama3.1:8b)
+> wird es robust.
 
 ## Ausführen
 
 ```bash
-python -m src.main scan                # Offline-Scan aller 30 Tickets → nur T-1030
-python -m src.main classify T-1030     # mit Härtung: Verdacht wird gemeldet
-python -m pytest tests/test_guardrails.py   # offline, kein Ollama nötig
+python -m pytest tests/test_agent_tools.py   # offline, kein Ollama nötig
+python -m src.agent T-1001                   # Agent löst eine VPN-Frage per KB
+python -m src.agent T-1003                   # Software-Bug — wird eingeordnet
+python -m src.agent T-1030                   # Injection → sofort eskaliert (VL 6!)
 ```
 
-Vergleich vorher/nachher (das ist der Lerneffekt):
+**Diskussionsstoff:** Wann ruft der Agent welches Tool? Was passiert bei
+T-1030 (greift die Vorabprüfung oder das Modell?)? Wo gehört ein
+Human-in-the-Loop hin, und was darf der Agent **nie** autonom tun
+(Least Privilege, VL 6)?
 
-```bash
-git checkout vl03-evaluation
-python -m src.main classify T-1030     # ungehärtet: LLM stuft evtl. "niedrig" ein
-git checkout vl06-guardrails
-python -m src.main classify T-1030     # gehärtet: bleibt "hoch", Verdacht markiert
-```
-
-**Diskussionsstoff:** Der Scanner erkennt 10 von 12 Angriffen — die zwei
-Lücken (Paraphrase, Suaheli) sind Absicht. Warum ist Pattern-Matching allein
-keine Lösung? Warum braucht es zusätzlich Härtung im Prompt *und* einen
-Output-Filter (Defense in Depth)?
-
-> Hier endet der VL-6-Stand. Ab VL 7/8 wird aus der Pipeline ein
-> **Tool-nutzender Agent** — mit der Knowledge Base aus `docs/` und einer
-> Eskalations-Funktion.
+> Hier endet der VL-8-Stand. VL 9 nimmt dasselbe System und schreibt zuerst
+> die **Spec** (OpenAPI für die Ticket-API, `CLAUDE.md` fürs Projekt).

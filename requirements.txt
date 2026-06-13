@@ -8,6 +8,12 @@ Jinja2==3.1.6
 # LLM-Anbindung (VL 3): OpenAI-SDK, gegen Ollama ODER Cloud nutzbar
 openai==1.54.3
 
+# Agenten (VL 8): LangGraph als Orchestrierung + Ollama-Anbindung
+# (LangGraph/LangChain 1.0, stabil seit 10/2025)
+langgraph==1.0.10
+langchain==1.0.3
+langchain-ollama==0.3.10
+
 # Entwicklung / Qualitaet
 pytest==9.0.3
 pylint==3.3.1
