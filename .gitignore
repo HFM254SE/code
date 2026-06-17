@@ -8,3 +8,4 @@ eval/results.csv
 .vscode/
 .step-build/
 tmp
+.env

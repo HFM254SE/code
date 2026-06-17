@@ -6,3 +6,4 @@ venv/
 eval/results.csv
 .idea/
 .vscode/
+.env
