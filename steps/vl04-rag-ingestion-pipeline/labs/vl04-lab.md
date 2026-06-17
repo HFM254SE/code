@@ -42,7 +42,7 @@ python -c "from sentence_transformers import SentenceTransformer; print('sentenc
 4) Prüfen, ob die Verbindung zur LMM funktioniert:
 
 ```bash
-python -c "import chat from src.llm; response = chat("Hey 👋"); print(response)"
+python -c "from src.llm import chat; response = chat("Hey 👋"); print(response)"
 ```
 
 Die Wissensbasis liegt in `docs/` — 8 Markdown-Dateien mit
