@@ -16,13 +16,12 @@ cd leinetech
 git checkout vl03-evaluation        # wir bauen auf dem VL-3-Stand auf
 ```
 
-Virtuelle Umgebung aktivieren und neue Abhängigkeiten installieren:
+Virtuelle Umgebung aktivieren und Abhängigkeiten installieren:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate           # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pip install chromadb sentence-transformers
 ```
 
 Prüfen, ob alles läuft:
@@ -305,7 +304,7 @@ die ihr heute indexiert habt, werden dem LLM als Kontext übergeben.
 
 | Problem                                        | Lösung                                                                                                                                    |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `ModuleNotFoundError: chromadb`                | `pip install chromadb sentence-transformers`                                                                                              |
+| `ModuleNotFoundError: chromadb`                | `pip install -r requirements.txt`                                                                                                         |
 | Modell-Download langsam                        | Vom Nachbarn kopieren: `~/.cache/huggingface/hub/` — oder Hörsaal-Hotspot                                                                 |
 | `sqlite3.OperationalError` beim ChromaDB-Start | `chroma_db/`-Verzeichnis löschen und Pipeline neu laufen lassen                                                                           |
 | Embedding dauert ewig                          | Nur 8 Dokumente × ~5 Chunks = ~40 Embeddings — sollte in Sekunden fertig sein. Falls nicht: `pip install --upgrade sentence-transformers` |
