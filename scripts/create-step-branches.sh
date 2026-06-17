@@ -18,13 +18,7 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-STEPS=(
-  vl01-start vl01-solution
-  vl03-llm-client vl03-evaluation
-  vl06-guardrails
-  vl08-agent
-  vl09-spec
-)
+source "$(dirname "$0")/steps.conf"
 BUILD_DIR=.step-build
 TMP_BRANCH=_steps-build-tmp
 
@@ -41,8 +35,7 @@ for step in "${STEPS[@]}"; do
   # Arbeitsverzeichnis leeren (außer .git)
   find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
-  cp -R "../common/." .
-  cp -R "../steps/$step/." .
+  "../scripts/assemble-step.sh" "$step" .
 
   git add -A
   git commit -m "Checkpoint: $step" --quiet
