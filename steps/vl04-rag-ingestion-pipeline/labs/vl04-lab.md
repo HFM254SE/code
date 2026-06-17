@@ -16,7 +16,7 @@ cd leinetech
 git checkout vl03-evaluation        # wir bauen auf dem VL-3-Stand auf
 ```
 
-Virtuelle Umgebung aktivieren und Abhängigkeiten installieren:
+1) Virtuelle Umgebung aktivieren und Abhängigkeiten installieren:
 
 ```bash
 python -m venv .venv
@@ -24,7 +24,11 @@ source .venv/bin/activate           # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Prüfen, ob alles läuft:
+2) Environment korrekt einstellen:
+
+Benennt die `.env.example` in `.env` um, öffnet sie, setzt euren API Key ein und speichert die Datei.
+
+3) Prüfen, ob alles läuft (sentence transformer download kann etwas dauern):
 
 ```bash
 python -c "import chromadb; print('ChromaDB', chromadb.__version__)"
@@ -34,6 +38,12 @@ python -c "from sentence_transformers import SentenceTransformer; print('sentenc
 > **Hinweis:** Der erste Import von `sentence-transformers` lädt das Modell
 > `all-MiniLM-L6-v2` (~80 MB). Je nach WLAN kann das dauern — startet
 > den Download frühzeitig.
+
+4) Prüfen, ob die Verbindung zur LMM funktioniert:
+
+```bash
+python -c "import chat from src.llm; response = chat("Hey 👋"); print(response)"
+```
 
 Die Wissensbasis liegt in `docs/` — 8 Markdown-Dateien mit
 IT-Dokumentation (VPN, Drucker, Passwörter, E-Mail, …). Schaut euch 2–3
