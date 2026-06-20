@@ -1,4 +1,4 @@
-# FHDW — Automatisierung im Software Engineering (Q3 2026) · Code
+# FHDW — Code zur Vorlesung Automatisierung im Software Engineering (Q3 2026) 
 
 Hands-on **Lab-Code**
 
