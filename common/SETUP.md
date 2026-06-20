@@ -18,8 +18,21 @@ Custom Endpoint, …), funktioniert dagegen — **dauerhaft gratis, aber ohne SL
 | Chat-UI (OpenWebUI) | `https://ai.homecloud.ee` | selbst registrieren, dann Freischaltung über Allan |
 | Monitoring (Grafana) | `https://grafana.homecloud.ee` | Google-SSO — *hier nachsehen, bevor ihr „kaputt" meldet* |
 
-**Welche Modelle laufen gerade?** → `curl`-Schnelltest unten (die Liste ändert
-sich; zuletzt z. B. ein Qwen3.6-MoE mit Tool-Calling + Reasoning).
+**Kurs-Modell:** Wir nutzen durchgehend **`qwen3.6-35B-A3B-FP8`** (Qwen3.6-MoE,
+35B Parameter / 3B aktiv, FP8 — Tool-Calling + Reasoning). Mit dem
+`curl`-Schnelltest unten könnt ihr prüfen, dass es gerade geladen ist.
+
+## ⚠️ Wichtig vor dem ersten Request
+
+- **Verfügbarkeit: nur montags 06:00–23:59 (Europe/Berlin).** Außerhalb dieses
+  Fensters ist euer Key gesperrt — das ist **Absicht** (Schutz vor Dauerlast),
+  kein Ausfall. Plant Arbeit am Endpunkt in dieses Fenster; sonst → Plan B
+  (Groq) oder lokales Ollama.
+- **Logging ist aktiv (Datenschutz!).** Eure **Prompts und die Antworten**
+  werden geloggt und sind über euren persönlichen API-Key **euch zuordenbar**.
+  Gebt deshalb **keine Passwörter, Secrets oder echten Personen-/Kundendaten**
+  in Prompts, Code-Snippets oder die Chat-UI ein — im Zweifel anonymisieren.
+- **Ein Key pro Person, nicht teilen.** Limits und Logs hängen am Key.
 
 ## Schnelltest (2 min)
 
@@ -30,10 +43,10 @@ export OPENAI_API_KEY="<euer-key>"
 # Welche Modelle sind verfügbar?
 curl -s "$OPENAI_BASE_URL/models" -H "Authorization: Bearer $OPENAI_API_KEY"
 
-# Eine Completion (Modellnamen aus der Liste oben einsetzen)
+# Eine Completion
 curl -s "$OPENAI_BASE_URL/chat/completions" \
   -H "Authorization: Bearer $OPENAI_API_KEY" -H "Content-Type: application/json" \
-  -d '{"model": "<modell>", "messages": [{"role": "user", "content": "Sag Moin."}]}'
+  -d '{"model": "qwen3.6-35B-A3B-FP8", "messages": [{"role": "user", "content": "Sag Moin."}]}'
 ```
 
 ⚠️ **Erste Antwort kann 200–300 s dauern** (Cold Start: Modell wird erst vom
@@ -67,7 +80,7 @@ models:
     provider: openai
     apiBase: https://llm.homecloud.ee/v1
     apiKey: <euer-key>
-    model: <modell-aus-/models>
+    model: qwen3.6-35B-A3B-FP8
     defaultCompletionOptions:
       contextLength: 131072   # ~128K cappen!
 ```
@@ -83,7 +96,7 @@ models:
       "npm": "@ai-sdk/openai-compatible",
       "options": { "baseURL": "https://llm.homecloud.ee/v1", "apiKey": "<euer-key>" },
       "models": {
-        "<modell-aus-/models>": { "limit": { "context": 131072 } }
+        "qwen3.6-35B-A3B-FP8": { "limit": { "context": 131072 } }
       }
     }
   }
@@ -111,6 +124,8 @@ export OPENAI_API_KEY="<groq-key>"
 | Problem | Lösung |
 |---|---|
 | Erste Anfrage hängt minutenlang | Cold Start (200–300 s) — warten, nicht abbrechen |
+| 403, „nur montags 06:00–23:59 …" | Außerhalb des Zeitfensters — der Guardrail blockt, kein Bug. → Plan B (Groq)/Ollama |
+| HTTP 429 „rate limit" | Zu viele/zu schnelle Anfragen — kurz warten und Anfragetempo drosseln |
 | Timeout/Fehler nach Wartezeit | Endpunkt evtl. down → **Plan B (Groq)** nutzen, nicht debuggen |
 | Sehr langsame Antworten | Cloudflare-Drosselung oder Last — kurze Sessions fahren |
 | Agent „lockt" den Endpunkt | Context-Cap (128K) im Client prüfen — s. o. |
