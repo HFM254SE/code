@@ -14,9 +14,9 @@ Neu gegenüber `vl03-llm-client`:
 
 ```bash
 python -m src.evaluate                       # nur Regeln (offline, < 1 s)
-python -m src.evaluate --llm                 # + llama3.2 über Ollama (10 Tickets)
-python -m src.evaluate --llm --all           # alle 30 Tickets (CPU: 10–15 min)
-LLM_MODEL=qwen2.5:3b python -m src.evaluate --llm    # anderes Modell
+python -m src.evaluate --llm                 # + qwen3.6 über HomeCloud (10 Tickets)
+python -m src.evaluate --llm --all           # alle 30 Tickets
+LLM_MODEL=<modell> python -m src.evaluate --llm      # anderes Modell/Backend
 ```
 
 *(Default ist `--limit 10`, damit eine Runde im Lab ~1 Minute dauert; das
@@ -25,8 +25,8 @@ Lab-Gerüst zum Selberbauen liegt unter `labs/templates/evaluate_skeleton.py`.)*
 Typisches Bild (eure Zahlen variieren je nach Modell):
 
 - Keyword-Regeln: ~2/3 der Kategorien richtig, in Mikrosekunden, kostenlos
-- Kleines lokales LLM: deutlich besser, aber Sekunden pro Ticket
-- Cloud-Frontier-Modell: am besten — gegen Geld und Datenabfluss
+- LLM über den Kurs-Endpunkt (qwen3.6-35B): deutlich besser, Sekunden pro Ticket
+- Cloud-Frontier-Modell (z. B. via Groq): am besten — gegen Geld und Datenabfluss
 
 **Diskussionsstoff:** Ab welcher Accuracy-Differenz lohnt sich der LLM-Einsatz?
 Wer zahlt die Latenz? Und was bedeutet das für die Deployment-Entscheidung

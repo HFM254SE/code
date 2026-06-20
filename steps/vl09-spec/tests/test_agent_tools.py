@@ -1,6 +1,6 @@
 """Tests für die Agent-Tools und die KB-Suche — komplett offline, kein LLM.
 
-Der Agenten-Graph (src/agent.py) braucht Ollama + LangGraph zum Laufen; die
+Der Agenten-Graph (src/agent.py) braucht das LLM + LangGraph zum Laufen; die
 *Tools* sind aber deterministischer Python-Code und müssen für sich testbar
 sein. Genau das ist die Disziplin aus VL 7: Tools sind normaler Code, also
 testet man sie wie normalen Code.

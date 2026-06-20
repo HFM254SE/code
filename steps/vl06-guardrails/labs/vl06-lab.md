@@ -14,12 +14,14 @@ Am Ende messt ihr, was eure Abwehr fängt — und was bewusst durchrutscht.
 cd leinetech
 git checkout vl03-evaluation     # der ungehärtete Stand aus VL 3
 pip install -r requirements.txt
-ollama pull qwen2.5:3b           # oder euer Modell aus VL 3
+
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"   # Kurs-Endpunkt, siehe SETUP.md
+export LLM_API_KEY="<euer-key>"
 ```
 
-> Kein Ollama zur Hand? Teil 1 geht auch gegen einen Cloud-Key
-> (`LLM_BASE_URL=https://api.openai.com/v1 LLM_API_KEY=sk-...`). Teil 2 (der
-> Scanner) und die Tests laufen **komplett offline**, ganz ohne LLM.
+> Endpunkt down (kein SLA)? Teil 1 geht auch gegen Plan B (Groq, siehe
+> `SETUP.md`). Teil 2 (der Scanner) und die Tests laufen **komplett offline**,
+> ganz ohne LLM.
 
 ---
 
@@ -125,5 +127,5 @@ für die in VL 7/8 kommenden Agenten-Aktionen).
 |---|---|
 | `scan` findet T-1030 nicht | Branch prüfen — ungehärtet (`vl03-evaluation`) vs. gehärtet (`vl06-guardrails`); der Scanner lebt erst ab eurem `src/guardrails.py` |
 | Tests rot bei `test_grenzen_des_scanners` | Ihr erkennt jetzt INJ-10/INJ-11 — entweder Pattern zu breit (False-Positive-Risiko!) oder `injections.jsonl` anpassen |
-| LLM stuft T-1030 immer korrekt ein | Manche Modelle sind robuster; testet ein kleineres Modell (`LLM_MODEL=llama3.2:1b`) — die Lücke ist modellabhängig, das ist selbst eine Erkenntnis |
-| `ModuleNotFoundError: openai` beim `scan` | `pip install -r requirements.txt` — `scan` ist offline, aber `main.py` lädt auch die LLM-Pfade |
+| LLM stuft T-1030 immer korrekt ein | Manche Modelle sind robuster; testet ein anderes Modell (`LLM_MODEL=…`) — die Lücke ist modellabhängig, das ist selbst eine Erkenntnis |
+| `ModuleNotFoundError: litellm` beim `scan` | `pip install -r requirements.txt` — `scan` ist offline, aber `main.py` lädt auch die LLM-Pfade |

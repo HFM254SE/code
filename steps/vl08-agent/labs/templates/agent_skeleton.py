@@ -11,15 +11,15 @@ fertig und getestet. Eure Arbeit ist die Verdrahtung des ReAct-Graphen:
 Vergleichen mit der Musterlösung: git checkout vl08-agent
 """
 
-import os
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_ollama import ChatOllama
+from langchain_litellm import ChatLiteLLM
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
 from src.agent_tools import AGENT_TOOLS
+from src.llm import get_api_key, get_base_url, get_model
 
 AGENT_SYSTEM_PROMPT = (
     "Du bist der Triage-Agent des IT-Supports der LeineTech GmbH. "
@@ -36,10 +36,14 @@ class TicketAgentState(TypedDict):
     ticket_id: str
 
 
-def _model() -> ChatOllama:
-    return ChatOllama(
-        model=os.environ.get("LLM_MODEL", "qwen3:8b"),
-        base_url=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
+def _model() -> ChatLiteLLM:
+    # hosted_vllm/ → litellm spricht den Kurs-Endpunkt (HomeCloud) mit eigenem
+    # HTTP-Client an; Konfiguration aus src/llm.py (siehe SETUP.md).
+    name = get_model()
+    return ChatLiteLLM(
+        model=name if "/" in name else f"hosted_vllm/{name}",
+        api_base=get_base_url(),
+        api_key=get_api_key(),
         temperature=0.0,
     ).bind_tools(AGENT_TOOLS)
 

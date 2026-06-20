@@ -25,7 +25,7 @@ Neu gegenüber `vl03-evaluation`:
 ```bash
 python -m src.main scan                # Offline-Scan aller 30 Tickets → nur T-1030
 python -m src.main classify T-1030     # mit Härtung: Verdacht wird gemeldet
-python -m pytest tests/test_guardrails.py   # offline, kein Ollama nötig
+python -m pytest tests/test_guardrails.py   # offline, ohne LLM
 ```
 
 Vergleich vorher/nachher (das ist der Lerneffekt):

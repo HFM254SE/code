@@ -48,5 +48,6 @@ git worktree remove -f "$BUILD_DIR"
 git branch -D "$TMP_BRANCH"
 
 echo
-echo "Fertig. Veröffentlichen mit:"
-echo "  git push -f origin ${STEPS[*]}"
+echo "Fertig. Veröffentlichen mit (vl04 = Svens RAG-WIP wird NICHT gepusht):"
+echo "  git push -f origin vl01-start vl01-solution vl03-llm-client vl03-evaluation \\"
+echo "                     vl06-guardrails vl08-agent vl09-spec"

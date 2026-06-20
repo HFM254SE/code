@@ -1,6 +1,6 @@
-# Lab VL 3 — Lokales LLM betreiben, anbinden und evaluieren
+# Lab VL 3 — LLM anbinden und evaluieren
 
-**Ziel:** Ein LLM vollständig lokal betreiben (Ollama), per OpenAI-kompatibler
+**Ziel:** Ein LLM über den Kurs-Endpunkt (HomeCloud) per OpenAI-kompatibler
 API ins LeineTech-Projekt integrieren — und dann **messen**, ob es die
 Keyword-Triage aus VL 1 wirklich schlägt.
 
@@ -10,22 +10,26 @@ Keyword-Triage aus VL 1 wirklich schlägt.
 
 ## Schritt 0 — Setup (5–10 min)
 
-Ollama sollte als Vorbereitung bereits installiert sein (VL 2, Hausaufgabe):
-
-```bash
-ollama pull llama3.2        # 3B, ~2 GB — läuft auf jedem Laptop
-ollama pull qwen2.5:3b      # zweites Modell für den Vergleich (~1.9 GB)
-curl http://localhost:11434/api/tags    # API-Server läuft?
-```
-
-Projekt auf den VL-1-Endstand bringen:
+Wir nutzen den **Kurs-Endpunkt** (Nortal HomeCloud) — einen OpenAI-kompatiblen
+LiteLLM-Gateway. Kein lokales Modell nötig (Details + Key in `SETUP.md`).
 
 ```bash
 cd leinetech
 git checkout vl01-solution      # eure eigene Lösung geht natürlich auch
-pip install -r requirements.txt
-pip install openai
+pip install -r requirements.txt # zieht u. a. litellm
+
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"
+export LLM_API_KEY="<euer-key>"   # Key auf Anfrage, siehe SETUP.md
 ```
+
+Schnelltest, dass der Endpunkt antwortet (Default-Modell `qwen3.6-35B-A3B-FP8`):
+
+```bash
+curl -s "$LLM_BASE_URL/models" -H "Authorization: Bearer $LLM_API_KEY" | head -c 200
+```
+
+> Geht der Endpunkt nicht (kein SLA!), schaltet ihr mit zwei Variablen auf
+> Plan B (Groq) — siehe `SETUP.md`.
 
 ---
 
@@ -33,9 +37,11 @@ pip install openai
 
 **Aufgabe:** Das Triage-Tool bekommt einen LLM-Anschluss. Baut zwei neue Module:
 
-1. **`src/llm.py`** — ein Client über das OpenAI-SDK:
-   - `base_url` aus `LLM_BASE_URL` (Default `http://localhost:11434/v1`)
-   - `api_key` aus `LLM_API_KEY` (Default `"ollama"` — Platzhalter)
+1. **`src/llm.py`** — ein dünner Wrapper um **litellm** (nicht das OpenAI-SDK,
+   dessen User-Agent der Gateway-WAF blockt):
+   - `litellm.completion(model="hosted_vllm/<modell>", api_base=…, api_key=…)`
+   - Konfiguration aus `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`
+     (Default-Modell `qwen3.6-35B-A3B-FP8`)
    - `chat(prompt, system=..., model=None, temperature=0.0) -> str`
 2. **`src/summarize.py`** — zwei Funktionen auf Basis von `chat()`:
    - `summarize_ticket(ticket)` → 1–2 Sätze Zusammenfassung
@@ -78,26 +84,26 @@ Füllt die TODOs:
 
 ```bash
 python -m src.evaluate                # nur Regeln: Baseline (10 Tickets)
-python -m src.evaluate --llm          # llama3.2 — ~1 Min auf CPU
-LLM_MODEL=qwen2.5:3b python -m src.evaluate --llm
+python -m src.evaluate --llm          # qwen3.6 über HomeCloud (10 Tickets)
+python -m src.evaluate --llm --all    # alle 30 Tickets
 ```
 
-Der Default ist bewusst `--limit 10` — der **volle 30-Ticket-Lauf
-(`--all`) ist Hausaufgabe** (10–15 Min Rechenzeit auf CPU-Laptops).
+Der Default ist bewusst `--limit 10` (eine LLM-Runde dauert nur ein paar
+Sekunden pro Ticket); mit `--all` laufen alle 30.
 
 **Auswertung (notiert die Zahlen!):**
 
 | System | Kategorie-Accuracy | Priorität-Accuracy | Ø Latenz |
 |---|---|---|---|
 | Keyword-Regeln | | | |
-| llama3.2 (3B) | | | |
-| qwen2.5:3b | | | |
-| Cloud-Modell (optional) | | | |
+| qwen3.6-35B (HomeCloud) | | | |
+| anderes Modell (optional) | | | |
 
 - Bei welchen Tickets irren die **Regeln**, bei welchen das **LLM**?
   Schaut euch 2–3 Fehlklassifikationen in `eval/results.csv` konkret an.
-- Optional mit API-Key: `LLM_BASE_URL=https://api.openai.com/v1 ...` —
-  derselbe Code, Frontier-Modell. (Keine echten/sensiblen Daten — die
+- Optional: ein zweites Backend vergleichen — z. B. Groq als Plan B
+  (`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` umsetzen, siehe `SETUP.md`).
+  Derselbe Code, anderes Modell. (Keine echten/sensiblen Daten — die
   LeineTech-Tickets sind fiktiv, genau dafür sind sie da.)
 
 > Checkpoint mit fertiger Evaluierung: `git checkout vl03-evaluation`
@@ -130,8 +136,8 @@ und den wichtigsten DSGVO-Maßnahmen. **Pitch: 2–3 min pro Gruppe.**
 
 | Problem | Lösung |
 |---|---|
-| `Connection refused` auf Port 11434 | `ollama serve` starten (oder Ollama-App öffnen) |
-| Download zu langsam / Hörsaal-WLAN | Modell vom Nachbarn kopieren: `~/.ollama/models` — oder `llama3.2:1b` (0,8 GB) |
+| `PermissionDeniedError` / „Your request was blocked" | OpenAI-SDK statt litellm, falsches Modell, oder `LLM_API_KEY` fehlt |
+| Endpunkt antwortet nicht / Timeout | Kein SLA — Zeitfenster (Mo) prüfen, sonst Plan B (Groq), siehe `SETUP.md` |
+| Erste Anfrage hängt minutenlang | Cold Start (Modell lädt in die GPUs) — einmal warten, danach „hot" |
 | LLM antwortet kein valides JSON | Defensiv parsen (erstes `{` bis letztes `}`), Few-Shot-Beispiele in den Prompt |
-| Alles zu langsam auf altem Laptop | `LLM_MODEL=llama3.2:1b` (Default ist eh nur `--limit 10`) |
-| `ModuleNotFoundError: openai` | `pip install openai` |
+| `ModuleNotFoundError: litellm` | `pip install -r requirements.txt` |

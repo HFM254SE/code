@@ -14,14 +14,17 @@ Bedarf an einen Menschen — der ReAct-Loop aus VL 7 in Code.
 ```bash
 cd leinetech
 git checkout vl06-guardrails       # wir bauen auf dem gehärteten Stand auf
-pip install -r requirements.txt    # zieht jetzt langgraph + langchain-ollama
-ollama pull qwen3:8b               # tool-fähig (~5 GB); schwacher Laptop: qwen3:4b
+pip install -r requirements.txt    # zieht jetzt langgraph + langchain-litellm
+
+# Kurs-Endpunkt setzen (siehe SETUP.md) — derselbe Key wie ab VL 3:
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"
+export LLM_API_KEY="<euer-key>"
 ```
 
-> **Tool-Calling braucht ein tool-fähiges Modell.** `llama3.2:3b` ruft Tools
-> nur unzuverlässig auf — ideal zum Lernen der Mechanik, nicht für stabile
-> Ergebnisse. Ab 8B (qwen3:8b, llama3.1:8b) wird es verlässlich. Wer kein
-> 8B-Modell laden kann, nimmt `qwen3:4b` und akzeptiert gelegentliche Ausrutscher.
+> **Tool-Calling braucht ein tool-fähiges Modell.** Der Kurs-Endpunkt liefert
+> mit `qwen3.6-35B-A3B-FP8` (Default in `src/llm.py`) ein zuverlässig
+> tool-fähiges Modell. Kleine Modelle lernen zwar die Mechanik, rufen Tools aber
+> unzuverlässig auf — deshalb hier bewusst das große Kurs-Modell über HomeCloud.
 
 ---
 
@@ -35,7 +38,7 @@ getestet — als ganz normaler Python-Code (`src/agent_tools.py`):
 - `escalate_to_human(ticket_id, grund)` — die einzige „echte" Aktion
 
 ```bash
-python -m pytest tests/test_agent_tools.py     # offline, kein Ollama
+python -m pytest tests/test_agent_tools.py     # offline, ohne LLM
 python -c "from src.agent_tools import kb_search; print(kb_search('VPN AnyConnect Verbindung'))"
 ```
 
@@ -129,8 +132,8 @@ entschieden? Welches Tool wurde unnötig oder gar nicht aufgerufen?
 
 | Problem | Lösung |
 |---|---|
-| Agent ruft nie ein Tool auf | Modell zu klein/nicht tool-fähig — `qwen3:8b` statt `llama3.2:3b` |
+| Agent ruft nie ein Tool auf | Falsches Modell in `LLM_MODEL` — Default `qwen3.6-35B-A3B-FP8` (tool-fähig) nutzen |
 | `Recursion limit reached` | Endlosschleife — Modell ruft dasselbe Tool wiederholt; `recursion_limit` greift wie vorgesehen, Prompt schärfen |
-| `Connection refused` 11434 | `ollama serve` starten |
+| `PermissionDeniedError` / „request blocked" | `LLM_API_KEY` gesetzt? Endpunkt im Zeitfenster (Mo)? Sonst Plan B (Groq), siehe SETUP.md |
 | `ModuleNotFoundError: langgraph` | `pip install -r requirements.txt` |
 | Antwort kommt, aber ohne KB-Bezug | Modell hat `kb_search` übersprungen — System-Prompt-Schritte expliziter machen |

@@ -28,4 +28,4 @@ trivy fs .         # → keine HIGH/CRITICAL-Findings mehr
 ```
 
 > Weiter geht es in VL 3: `git checkout vl03-llm-client` —
-> das Tool bekommt einen LLM-Anschluss über die OpenAI-kompatible Ollama-API.
+> das Tool bekommt einen LLM-Anschluss über den OpenAI-kompatiblen Kurs-Endpunkt (HomeCloud).

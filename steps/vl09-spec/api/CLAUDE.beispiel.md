@@ -13,7 +13,7 @@ Triage-Tool + REST-API + (ab VL 8) ein Tool-nutzender Agent.
 
 - Python 3.10+ (Type Hints durchgängig, `dict[str, list[str]]`-Syntax)
 - FastAPI + Uvicorn für die API (`api/`), Pydantic für Schemas
-- OpenAI-SDK gegen Ollama (lokal) oder Cloud (`src/llm.py`)
+- litellm gegen den Kurs-Endpunkt (HomeCloud, OpenAI-kompatibel) (`src/llm.py`)
 - LangGraph 1.0 für den Agenten (`src/agent.py`)
 - pytest für Tests, pylint + flake8 für Qualität
 
@@ -36,7 +36,7 @@ Triage-Tool + REST-API + (ab VL 8) ein Tool-nutzender Agent.
 
 ## Test-Strategie
 
-- Jede neue Logik bekommt einen offline-Test (kein Ollama/Netz nötig).
+- Jede neue Logik bekommt einen offline-Test (kein Netz nötig).
 - `pytest` muss grün sein, bevor committet wird.
 - API-Änderungen: zuerst `api/openapi.yaml` anpassen, dann Code (Spec-First!).
 

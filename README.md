@@ -12,8 +12,8 @@ Hannover, ~200 Mitarbeitende).
 |----|-------------|-------------|
 | 1 | Bestehendes Triage-Tool verbessern | pylint, flake8, Trivy, Cursor/Copilot |
 | 2 | Tickets per Prompt klassifizieren (Browser, ohne Code) | Zero-/Few-Shot, CoT |
-| 3 | LLM-Anschluss über lokales Modell + Evaluierung | Ollama, OpenAI SDK, Golden Dataset |
-| 4–5 | RAG-Chatbot über die LeineTech-Knowledge-Base (`docs/`) | ChromaDB, Embeddings |
+| 3 | LLM-Anschluss über den Kurs-Endpunkt + Evaluierung | HomeCloud (litellm), Golden Dataset |
+| 4–5 | RAG-Chatbot über die LeineTech-Knowledge-Base (`docs/`) | ChromaDB, Embeddings (Sven, in Arbeit) |
 | 6 | Das eigene System angreifen und absichern | Prompt Injection, Guardrails |
 | 7–8 | Triage zum Tool-nutzenden Agenten ausbauen | LangGraph, MCP |
 | 9 | Spec-Driven Development am Projekt | OpenAPI, CLAUDE.md |
@@ -28,7 +28,7 @@ verpasst, steigt einfach wieder ein:
 ```
 git checkout vl01-start        # VL 1: das "schlechte" Tool (Lab-Start)
 git checkout vl01-solution     # VL 1: Musterlösung = Start für VL 3
-git checkout vl03-llm-client   # VL 3: LLM-Anschluss über Ollama fertig
+git checkout vl03-llm-client   # VL 3: LLM-Anschluss über den Kurs-Endpunkt fertig
 git checkout vl03-evaluation   # VL 3: Evaluierung Regeln vs. LLM fertig
 git checkout vl06-guardrails   # VL 6: Injection-Scanner + Output-Filter
 git checkout vl08-agent        # VL 8: Tool-nutzender LangGraph-Agent
@@ -38,7 +38,10 @@ git checkout vl09-spec         # VL 9: OpenAPI-Spec + Drift-Prüfung
 Jeder Branch ist **vollständig** (Code + Daten + Docs + Lab-Anleitung in
 `labs/`) und die Anleitungen funktionieren auch ohne Vorlesung zum Nacharbeiten.
 (VL 2, 4–5, 7, 10 haben keinen eigenen Code-Branch: VL 2 ist browserbasiert,
-VL 4/5 sind Svens separater RAG-Workshop, VL 7 und 10 sind Theorie/Fallstudie.)
+VL 7 und 10 sind Theorie/Fallstudie. **VL 4/5 (RAG, Sven) ist in Arbeit** —
+der Lab-Code liegt unter `steps/vl04-rag-ingestion-pipeline` und baut auf
+`vl03-evaluation` auf; einen eigenen Checkpoint-Branch gibt es noch nicht,
+die Folien liegen im separaten `slides`-Repo.)
 
 ## Inhalt eines Checkpoints
 

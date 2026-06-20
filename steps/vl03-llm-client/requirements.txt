@@ -5,8 +5,8 @@ certifi==2024.7.4
 PyYAML==6.0.2
 Jinja2==3.1.6
 
-# LLM-Anbindung (VL 3): OpenAI-SDK, gegen Ollama ODER Cloud nutzbar
-openai==1.54.3
+# LLM-Anbindung (VL 3): litellm gegen den Kurs-Endpunkt (HomeCloud, OpenAI-kompatibel)
+litellm==1.89.2
 
 # Entwicklung / Qualitaet
 pytest==9.0.3

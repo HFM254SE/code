@@ -7,11 +7,11 @@ Menschen vergebenen Soll-Labels für alle 30 Tickets.
 Beispiele:
     python -m src.evaluate                      # nur Regeln, erste 10 Tickets
     python -m src.evaluate --llm                # Regeln + LLM, erste 10 Tickets
-    python -m src.evaluate --llm --all          # alle 30 (dauert auf CPU!)
-    LLM_MODEL=qwen2.5:3b python -m src.evaluate --llm
+    python -m src.evaluate --llm --all          # alle 30 Tickets
+    LLM_MODEL=<modell> python -m src.evaluate --llm  # anderes Modell/Backend
 
-Default ist --limit 10, damit eine LLM-Runde im Lab nur ~1 Minute dauert.
-Der volle 30er-Lauf ist Hausaufgabe (--all).
+Default ist --limit 10; mit --all laufen alle 30 Tickets (qwen3.6 ueber
+HomeCloud, ein paar Sekunden pro Ticket).
 """
 
 import argparse

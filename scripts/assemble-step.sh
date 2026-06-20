@@ -13,9 +13,14 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+# REPO_ROOT muss auf das QUELL-Repo zeigen, nicht aufs aktuelle Arbeits-
+# verzeichnis: create-step-branches.sh ruft dieses Skript aus dem (geleerten)
+# Worktree .step-build heraus auf, wo `git rev-parse --show-toplevel` den
+# Worktree liefern würde. Daher relativ zum Skript-Pfad auflösen.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-source "$(dirname "$0")/steps.conf"
+source "$SCRIPT_DIR/steps.conf"
 
 if [[ $# -ne 2 ]]; then
   echo "Nutzung: $0 <step-name> <zielverzeichnis>" >&2
@@ -56,5 +61,11 @@ for s in "${STEPS[@]}"; do
   fi
 done
 
-# 3. Ziel-Step komplett kopieren (überschreibt ggf. labs/), ohne venv
-rsync -a --exclude='venv' "$REPO_ROOT/steps/$STEP/" "$DEST"
+# 3. Ziel-Step komplett kopieren (überschreibt ggf. labs/), ohne venv.
+#    rsync bevorzugt; falls nicht vorhanden (z. B. schlanke Container) cp-Fallback.
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --exclude='venv' "$REPO_ROOT/steps/$STEP/" "$DEST"
+else
+  cp -R "$REPO_ROOT/steps/$STEP/." "$DEST"
+  rm -rf "$DEST/venv"
+fi

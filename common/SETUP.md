@@ -27,7 +27,7 @@ Custom Endpoint, …), funktioniert dagegen — **dauerhaft gratis, aber ohne SL
 - **Verfügbarkeit: nur montags 06:00–23:59 (Europe/Berlin).** Außerhalb dieses
   Fensters ist euer Key gesperrt — das ist **Absicht** (Schutz vor Dauerlast),
   kein Ausfall. Plant Arbeit am Endpunkt in dieses Fenster; sonst → Plan B
-  (Groq) oder lokales Ollama.
+  (Groq).
 - **Logging ist aktiv (Datenschutz!).** Eure **Prompts und die Antworten**
   werden geloggt und sind über euren persönlichen API-Key **euch zuordenbar**.
   Gebt deshalb **keine Passwörter, Secrets oder echten Personen-/Kundendaten**
@@ -59,16 +59,31 @@ das Modell „hot".
 kann mehr, aber große Kontexte fressen KV-Cache/VRAM und können den Endpunkt
 für alle blockieren.
 
-### Python / OpenAI SDK (so nutzt es unser `src/llm.py`)
+### Python / litellm (so nutzt es unser `src/llm.py`)
+
+Wir sprechen den Endpunkt über die **litellm**-Library an, **nicht** über das
+OpenAI-SDK: Der WAF vor dem Gateway blockt den User-Agent des OpenAI-SDK
+(`OpenAI/Python`). litellm mit dem **`hosted_vllm/`**-Provider nutzt einen
+eigenen HTTP-Client und kommt sauber durch (Installation: `pip install litellm`,
+steckt schon in `requirements.txt`).
 
 ```python
-from openai import OpenAI
+import litellm
 
-client = OpenAI()  # liest OPENAI_BASE_URL + OPENAI_API_KEY aus der Umgebung
+resp = litellm.completion(
+    model="hosted_vllm/qwen3.6-35B-A3B-FP8",   # Provider-Präfix + Kurs-Modell
+    messages=[{"role": "user", "content": "Sag Moin."}],
+    api_base="https://llm.homecloud.ee/v1",    # = LLM_BASE_URL / OPENAI_BASE_URL
+    api_key="<euer-key>",                       # = LLM_API_KEY / OPENAI_API_KEY
+)
+print(resp.choices[0].message.content)
 ```
 
-Für die Labs ab VL 3 reicht es also, die beiden Umgebungsvariablen zu setzen —
-derselbe Code läuft gegen Ollama (lokal), HomeCloud oder Groq.
+`src/llm.py` liest `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` (ersatzweise die
+`OPENAI_*`-Varianten) aus der Umgebung — für die Labs ab VL 3 reicht es also,
+diese Variablen zu setzen. **Default-Modell ist `qwen3.6-35B-A3B-FP8`**; ein
+eigener Modellname kommt ohne `hosted_vllm/`-Präfix in `LLM_MODEL` (das setzt
+`src/llm.py` selbst davor).
 
 ### Continue.dev (VS Code)
 
@@ -124,12 +139,12 @@ export OPENAI_API_KEY="<groq-key>"
 | Problem | Lösung |
 |---|---|
 | Erste Anfrage hängt minutenlang | Cold Start (200–300 s) — warten, nicht abbrechen |
-| 403, „nur montags 06:00–23:59 …" | Außerhalb des Zeitfensters — der Guardrail blockt, kein Bug. → Plan B (Groq)/Ollama |
+| 403, „nur montags 06:00–23:59 …" | Außerhalb des Zeitfensters — der Guardrail blockt, kein Bug. → Plan B (Groq) |
 | HTTP 429 „rate limit" | Zu viele/zu schnelle Anfragen — kurz warten und Anfragetempo drosseln |
 | Timeout/Fehler nach Wartezeit | Endpunkt evtl. down → **Plan B (Groq)** nutzen, nicht debuggen |
 | Sehr langsame Antworten | Cloudflare-Drosselung oder Last — kurze Sessions fahren |
 | Agent „lockt" den Endpunkt | Context-Cap (128K) im Client prüfen — s. o. |
-| Whole-Codebase-Aufgaben / große Multi-File-Edits | dafür ist der Endpunkt nicht gedacht → Cursor/Copilot oder lokales Ollama |
+| Whole-Codebase-Aufgaben / große Multi-File-Edits | dafür ist der Endpunkt nicht gedacht → Cursor/Copilot |
 
 **Faustregel:** HomeCloud = gratis agentic Coding für kurze, fokussierte
-Sessions. Alles Große → Cursor-Studierendenjahr oder lokal (Ollama).
+Sessions. Alles Große → Cursor-Studierendenjahr.

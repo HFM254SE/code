@@ -14,25 +14,25 @@ Neu gegenüber `vl06-guardrails`:
   `escalate_to_human` (+ `injection_check` als Nicht-LLM-Vorprüfung aus VL 6).
 - `src/agent.py` — der LangGraph-Agent: `guardrail → agent ⇄ tools → END`,
   mit `recursion_limit` als Endlosschleifen-Schutz.
-- `tests/test_agent_tools.py` — **offline** (kein Ollama): KB-Treffer,
+- `tests/test_agent_tools.py` — **offline** (ohne LLM): KB-Treffer,
   Tool-Verhalten, Eskalations-Protokoll, Injection-Vorprüfung.
 
 ## Voraussetzung
 
 ```bash
 pip install -r requirements.txt
-ollama pull qwen3:8b        # tool-fähig, ~5 GB; schwacher Laptop: qwen3:4b
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"   # Kurs-Endpunkt, siehe SETUP.md
+export LLM_API_KEY="<euer-key>"
 ```
 
-> **Wichtig:** Tool-Calling braucht ein tool-fähiges Modell. `llama3.2:3b`
-> *kann* Tools aufrufen, tut es aber unzuverlässig — gut zum Lernen der
-> Mechanik, nicht für verlässliche Ergebnisse. Ab 8B (qwen3:8b, llama3.1:8b)
-> wird es robust.
+> **Wichtig:** Tool-Calling braucht ein tool-fähiges Modell. Der Kurs-Endpunkt
+> liefert mit `qwen3.6-35B-A3B-FP8` (Default) ein robust tool-fähiges Modell —
+> kleine Modelle rufen Tools nur unzuverlässig auf.
 
 ## Ausführen
 
 ```bash
-python -m pytest tests/test_agent_tools.py   # offline, kein Ollama nötig
+python -m pytest tests/test_agent_tools.py   # offline, ohne LLM
 python -m src.agent T-1001                   # Agent löst eine VPN-Frage per KB
 python -m src.agent T-1003                   # Software-Bug — wird eingeordnet
 python -m src.agent T-1030                   # Injection → sofort eskaliert (VL 6!)

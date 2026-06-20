@@ -11,9 +11,9 @@ expliziter Graph sichtbar gemacht.
     │  (VL6)         (LLM)    (Code)                 │
     └───────────────────────────────────────────────┘
 
-Voraussetzung: ein tool-fähiges Modell. Kleine Modelle (llama3.2:3b) lernen
-zwar die Mechanik, rufen Tools aber unzuverlässig auf — fürs Lab daher
-qwen3:8b (≈5 GB) oder llama3.1:8b empfohlen, qwen3:4b als Fallback.
+Voraussetzung: ein tool-fähiges Modell. Der Kurs-Endpunkt (HomeCloud) stellt
+mit qwen3.6-35B-A3B-FP8 ein zuverlässig tool-fähiges Modell bereit — kleine
+Modelle lernen zwar die Mechanik, rufen Tools aber unzuverlässig auf.
 
 LangChain/LangGraph 1.0. Eine fertige Abkürzung wäre `create_agent` aus
 langchain.agents — wir bauen den Graphen hier bewusst von Hand, damit der
@@ -21,15 +21,15 @@ ReAct-Loop nachvollziehbar bleibt.
 """
 
 import json
-import os
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_ollama import ChatOllama
+from langchain_litellm import ChatLiteLLM
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
 from src.agent_tools import AGENT_TOOLS, injection_check
+from src.llm import get_api_key, get_base_url, get_model
 
 AGENT_SYSTEM_PROMPT = (
     "Du bist der Triage-Agent des IT-Supports der LeineTech GmbH. "
@@ -51,10 +51,15 @@ class TicketAgentState(TypedDict):
     ticket_id: str
 
 
-def _model() -> ChatOllama:
-    return ChatOllama(
-        model=os.environ.get("LLM_MODEL", "qwen3:8b"),
-        base_url=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
+def _model() -> ChatLiteLLM:
+    # hosted_vllm/ → litellm spricht den OpenAI-kompatiblen vLLM-Endpunkt mit
+    # eigenem HTTP-Client an (der WAF vor dem Gateway blockt den User-Agent des
+    # OpenAI-SDK). Konfiguration kommt aus src/llm.py (siehe SETUP.md).
+    name = get_model()
+    return ChatLiteLLM(
+        model=name if "/" in name else f"hosted_vllm/{name}",
+        api_base=get_base_url(),
+        api_key=get_api_key(),
         temperature=0.0,
     ).bind_tools(AGENT_TOOLS)
 
@@ -101,6 +106,25 @@ def build_agent():
     return graph.compile()
 
 
+def _content_text(content) -> str:
+    """Normalisiert ``message.content`` zu Text.
+
+    Reasoning-fähige Modelle (qwen3.6) liefern den Inhalt gelegentlich als Liste
+    von Content-Blöcken statt als String — wir ziehen die Text-Blöcke heraus,
+    damit handle_ticket() verlässlich einen String zurückgibt.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts = [
+            b["text"]
+            for b in content
+            if isinstance(b, dict) and b.get("type") == "text" and b.get("text")
+        ]
+        return "\n".join(texts).strip() if texts else str(content)
+    return str(content)
+
+
 def handle_ticket(ticket: dict, recursion_limit: int = 12) -> str:
     """Lässt den Agenten ein Ticket bearbeiten und liefert seine finale Antwort.
 
@@ -123,7 +147,7 @@ def handle_ticket(ticket: dict, recursion_limit: int = 12) -> str:
     )
     state = {"messages": [HumanMessage(user)], "ticket_id": ticket["id"]}
     result = agent.invoke(state, {"recursion_limit": recursion_limit})
-    return result["messages"][-1].content
+    return _content_text(result["messages"][-1].content)
 
 
 if __name__ == "__main__":

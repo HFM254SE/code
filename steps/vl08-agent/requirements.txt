@@ -5,14 +5,14 @@ certifi==2024.7.4
 PyYAML==6.0.2
 Jinja2==3.1.6
 
-# LLM-Anbindung (VL 3): OpenAI-SDK, gegen Ollama ODER Cloud nutzbar
-openai==1.54.3
+# LLM-Anbindung (VL 3): litellm gegen den Kurs-Endpunkt (HomeCloud, OpenAI-kompatibel)
+litellm==1.89.2
 
-# Agenten (VL 8): LangGraph als Orchestrierung + Ollama-Anbindung
+# Agenten (VL 8): LangGraph-Orchestrierung + HomeCloud-Anbindung via litellm
 # (LangGraph/LangChain 1.0, stabil seit 10/2025)
 langgraph==1.0.10
 langchain==1.0.3
-langchain-ollama==0.3.10
+langchain-litellm==0.7.0
 
 # Entwicklung / Qualitaet
 pytest==9.0.3
