@@ -71,8 +71,8 @@ einen Auftrag, z. B.:
 trivy fs .
 ```
 
-Trivy prüft `requirements.txt` gegen CVE-Datenbanken. Die Abhängigkeiten sind
-seit 2021 eingefroren — ihr werdet fündig.
+Trivy prüft `requirements.txt` gegen CVE-Datenbanken. Die gepinnten Versionen
+sind veraltet — ihr werdet fündig.
 
 **Aufgaben:**
 1. Wie viele CVEs findet Trivy? Wie viele davon **HIGH/CRITICAL**?

@@ -8,6 +8,9 @@ Code gegen jedes OpenAI-kompatible Backend schalten — Cloud oder self-hosted:
     LLM_API_KEY    API-Key des Anbieters (Default: "ollama" — wird von Ollama
                    nicht geprüft, der Client verlangt aber einen Wert)
     LLM_MODEL      Modellname, z. B. "llama3.2", "qwen2.5:3b", "gpt-5"
+
+Als Fallback werden OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL gelesen
+(LLM_* hat Vorrang), damit auch die Standard-Variablen aus SETUP.md greifen.
 """
 
 import os
@@ -26,14 +29,14 @@ SYSTEM_PROMPT = (
 def get_client() -> OpenAI:
     """Erzeugt einen OpenAI-Client für das konfigurierte Backend."""
     return OpenAI(
-        base_url=os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL),
-        api_key=os.environ.get("LLM_API_KEY", "ollama"),
+        base_url=os.environ.get("LLM_BASE_URL") or os.environ.get("OPENAI_BASE_URL") or DEFAULT_BASE_URL,
+        api_key=os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY") or "ollama",
     )
 
 
 def get_model() -> str:
     """Liefert den konfigurierten Modellnamen."""
-    return os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+    return os.environ.get("LLM_MODEL") or os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL
 
 
 def chat(

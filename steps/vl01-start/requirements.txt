@@ -1,10 +1,12 @@
 # LeineTech Ticket-Triage — Abhaengigkeiten
-# (eingefroren von einem Kollegen, "lief doch" — seit 2021 nicht angefasst)
-requests==2.25.1
-urllib3==1.26.4
-certifi==2021.10.8
-PyYAML==5.3.1
-Jinja2==2.11.2
+# Modernisiert fuer Python 3.12 (alte 2021er-Pins waren inkompatibel:
+# urllib3 1.26.4 lieferte six 1.12.0, dessen find_module-Hook in 3.12 entfernt wurde)
+requests==2.32.3
+urllib3==2.2.3
+certifi==2024.8.30
+PyYAML==6.0.2
+Jinja2==3.1.4
+MarkupSafe==2.1.5
 
 # Entwicklung / Qualitaet
 pytest==8.3.3

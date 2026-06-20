@@ -14,8 +14,8 @@ Custom Endpoint, …), funktioniert dagegen — **dauerhaft gratis, aber ohne SL
 
 | Dienst | URL | Zugang |
 |---|---|---|
-| API (LiteLLM) | `https://llm.homecloud.ee` | API-Key — Account auf Anfrage (über Jan → Allan) |
-| Chat-UI (OpenWebUI) | `https://ai.homecloud.ee` | selbst registrieren, dann Freischaltung über Allan |
+| API (LiteLLM) | `https://llm.homecloud.ee` | API-Key — Account auf Anfrage beim Head of Engineering (Nortal Estonia) |
+| Chat-UI (OpenWebUI) | `https://ai.homecloud.ee` | selbst registrieren, dann Freischaltung durch den Head of Engineering (Nortal Estonia) |
 | Monitoring (Grafana) | `https://grafana.homecloud.ee` | Google-SSO — *hier nachsehen, bevor ihr „kaputt" meldet* |
 
 **Kurs-Modell:** Wir nutzen durchgehend **`qwen3.6-35B-A3B-FP8`** (Qwen3.6-MoE,
