@@ -10,3 +10,4 @@ eval/results.csv
 .step-build/
 tmp
 .env
+.claude
