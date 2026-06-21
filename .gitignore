@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+eval/results.csv
+.idea/
+.vscode/
+.env
+.continue/
+.claude/
