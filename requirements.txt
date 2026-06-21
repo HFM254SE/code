@@ -5,10 +5,17 @@ certifi==2024.7.4
 PyYAML==6.0.2
 Jinja2==3.1.6
 
-# LLM-Anbindung (VL 3): litellm gegen den Kurs-Endpunkt (HomeCloud, OpenAI-kompatibel)
-litellm==1.89.2
+# LLM-Anbindung (VL 3): OpenAI-SDK, gegen Ollama ODER Cloud nutzbar
+openai==1.57.0
+
+# RAG Ingestion-Pipeline (VL 4): Embeddings + Vektordatenbank
+chromadb==1.0.7
+sentence-transformers==4.1.0
 
 # Entwicklung / Qualitaet
 pytest==9.0.3
 pylint==3.3.1
 flake8==7.1.1
+
+# Environment
+dotenv-loader==1.0.4
