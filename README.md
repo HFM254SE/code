@@ -1,33 +1,36 @@
-# LeineTech Ticket-Triage — `vl03-llm-client`
+# LeineTech Ticket-Triage — `vl03-evaluation`
 
-Stand nach **Teil 1 des Labs in VL 3** (LLMs: Deployment, Betrieb & Evaluierung).
+Endzustand des **Labs in VL 3**: Das Bauchgefühl („das LLM ist bestimmt
+besser") wird durch **Messung** ersetzt.
 
-Das Triage-Tool aus VL 1 hat jetzt einen **LLM-Anschluss**:
+Neu gegenüber `vl03-llm-client`:
 
-- `src/llm.py` — ein **litellm**-Wrapper gegen den **Kurs-Endpunkt**
-  (HomeCloud, OpenAI-kompatibel). Per Umgebungsvariablen (`LLM_BASE_URL`,
-  `LLM_API_KEY`, `LLM_MODEL`) auf jedes kompatible Backend umschaltbar —
-  HomeCloud, Groq oder self-hosted. **Eine Codebasis, jedes Backend.**
-- `src/summarize.py` — Ticket-Zusammenfassung und **LLM-Klassifikation**
-  (Few-Shot-Prompt aus VL 2, JSON-Ausgabe, defensives Parsing).
-- `src/main.py` — CLI mit Subkommandos.
+- `src/evaluate.py` — Use-Case-spezifische Evaluierung gegen das
+  **Golden Dataset** (`eval/golden.jsonl`, 30 von Menschen gelabelte Tickets):
+  Accuracy für Kategorie & Priorität plus Latenz, für Keyword-Regeln und
+  beliebige LLMs. Ergebnisse zusätzlich als `eval/results.csv`.
 
 ## Ausführen
 
 ```bash
-pip install -r requirements.txt
-export LLM_BASE_URL="https://llm.homecloud.ee/v1"   # Kurs-Endpunkt, siehe SETUP.md
-export LLM_API_KEY="<euer-key>"
-
-python -m src.main triage             # regelbasiert (Stand VL 1)
-python -m src.main summarize T-1003   # LLM-Zusammenfassung
-python -m src.main classify T-1003    # Regeln vs. LLM im direkten Vergleich
-
-# Anderes Backend (z. B. Groq als Plan B, siehe SETUP.md):
-LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk-... \
-  LLM_MODEL=llama-3.3-70b-versatile python -m src.main summarize T-1003
+python -m src.evaluate                       # nur Regeln (offline, < 1 s)
+python -m src.evaluate --llm                 # + qwen3.6 über HomeCloud (10 Tickets)
+python -m src.evaluate --llm --all           # alle 30 Tickets
+LLM_MODEL=<modell> python -m src.evaluate --llm      # anderes Modell/Backend
 ```
 
-> Weiter im Lab: `labs/vl03-lab.md`. Der nächste Checkpoint
-> (`vl03-evaluation`) misst systematisch, ob das LLM wirklich besser
-> klassifiziert als die Keyword-Regeln.
+*(Default ist `--limit 10`, damit eine Runde im Lab ~1 Minute dauert; das
+Lab-Gerüst zum Selberbauen liegt unter `labs/templates/evaluate_skeleton.py`.)*
+
+Typisches Bild (eure Zahlen variieren je nach Modell):
+
+- Keyword-Regeln: ~2/3 der Kategorien richtig, in Mikrosekunden, kostenlos
+- LLM über den Kurs-Endpunkt (qwen3.6-35B): deutlich besser, Sekunden pro Ticket
+- Cloud-Frontier-Modell (z. B. via Groq): am besten — gegen Geld und Datenabfluss
+
+**Diskussionsstoff:** Ab welcher Accuracy-Differenz lohnt sich der LLM-Einsatz?
+Wer zahlt die Latenz? Und was bedeutet das für die Deployment-Entscheidung
+(Cloud / On-Prem / Edge) aus der Vorlesung?
+
+> Hier endet der VL-3-Stand. Ab VL 4/5 (RAG) beantwortet das System Tickets
+> inhaltlich — mit der Knowledge Base in `docs/` als Wissensquelle.
