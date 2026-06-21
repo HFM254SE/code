@@ -14,6 +14,12 @@ langgraph==1.0.10
 langchain==1.0.3
 langchain-litellm==0.7.0
 
+# Spec-Driven (VL 9): API aus OpenAPI-Spec + Drift-Prüfung
+fastapi==0.115.5
+uvicorn==0.32.1
+schemathesis==4.21.5     # 4.x: OpenAPI 3.1 nativ; CLI nutzt --url statt --base-url
+email-validator==2.2.0   # fuer Pydantic EmailStr (Spec: format: email)
+
 # Entwicklung / Qualitaet
 pytest==9.0.3
 pylint==3.3.1
