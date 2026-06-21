@@ -7,7 +7,9 @@ Projekt loslassen — und die Ergebnisse **kritisch bewerten**.
 
 ---
 
-## Schritt 0 — Setup prüfen (5 min)
+## Schritt 0 — Setup (10 min)
+
+**A) Kursprojekt holen & starten**
 
 ```bash
 git clone https://github.com/HFM254SE/code.git leinetech
@@ -19,8 +21,30 @@ python -m src.main      # → Triage-Report über 30 Tickets
 python -m pytest        # → alle Tests grün
 ```
 
-Wenn beides läuft, seid ihr startklar. **Merkt euch: Die Tests sind euer
-Sicherheitsnetz.** Nach jedem (KI-)Refactoring müssen sie wieder grün sein.
+Wenn beides läuft, ist das Projekt startklar. **Merkt euch: Die Tests sind euer
+Sicherheitsnetz** — nach jedem (KI-)Refactoring müssen sie wieder grün sein.
+
+**B) KI-Assistent einrichten — VS Code + Continue.dev gegen die HomeCloud**
+
+Wir nutzen den **kostenlosen Kurs-Endpunkt (Nirk HomeCloud)** — kein Student
+Pack, kein Cursor-Abo, keine ID-Verifikation. Vollständige Anleitung mit der
+fertigen Config: **`SETUP.md`** im Repo-Root. Kurzfassung:
+
+1. **VS Code** + die Extension **Continue** (continue.dev) installieren.
+2. **Ollama** installieren und das Autocomplete-Modell ziehen (einmalig, ~1 GB,
+   läuft auch auf der CPU):
+   ```bash
+   ollama run qwen2.5-coder:1.5b
+   ```
+3. **API-Key vom Dozenten** holen und `~/.continue/config.yaml` anlegen (Vorlage
+   in `SETUP.md`): Chat/Edit läuft über die HomeCloud (`provider: vllm`),
+   Tab-Completion lokal über Ollama.
+4. **Smoke-Test:** Continue-Chat öffnen, „Sag Moin." schicken → es antwortet.
+   (Erste Antwort kann beim *Cold Start* bis ~200 s dauern — einmal warten.)
+
+> **Datenschutz:** Prompts und Antworten am Kurs-Endpunkt werden geloggt und sind
+> eurem Key zuordenbar. Keine Passwörter, Secrets oder echten Personendaten in
+> Prompts — im Zweifel anonymisieren.
 
 ---
 
@@ -45,8 +69,8 @@ flake8 src/ --max-line-length 120
 
 ## Schritt 2 — KI-Assistent fixen lassen (~15 min)
 
-Öffnet das Projekt in Cursor (oder VS Code + Copilot) und gebt dem Agenten
-einen Auftrag, z. B.:
+Öffnet das Projekt in **VS Code** und nutzt **Continue.dev** (Chat bzw. die
+„Edit"-Funktion, gegen die HomeCloud). Gebt dem Assistenten einen Auftrag, z. B.:
 
 > Behebe alle pylint- und flake8-Findings in src/. Halte dich an PEP 8 und
 > Clean-Code-Prinzipien: sprechende Namen, Type Hints, Docstrings, keine
@@ -91,7 +115,7 @@ Nehmt euren **eigenen Code** (Job, Studium, Hobbyprojekt) — wer nichts dabei
 hat, arbeitet weiter im LeineTech-Repo:
 
 1. **Linter:** `pylint` / `flake8` laufen lassen → 3 interessante Findings notieren.
-2. **KI-Fix:** Cursor/Copilot die Findings beheben lassen.
+2. **KI-Fix:** Continue.dev die Findings beheben lassen.
 3. **Kritische Bewertung:** War der Vorschlag gut? Was war richtig / falsch / fehlt?
 4. **Bonus:** Eine Funktion mit einem detaillierten Clean-Code-Prompt komplett
    neu schreiben lassen und mit dem Original vergleichen.
@@ -108,6 +132,9 @@ besonders **schlechten** KI-Vorschlag.
 | `ModuleNotFoundError: src` | Aus dem Repo-Root starten: `python -m src.main` |
 | `pylint: command not found` | `pip install -r requirements.txt` (oder `pipx install pylint`) |
 | Trivy nicht installiert | macOS: `brew install trivy` · Windows: `winget install trivy` · sonst: [aquasecurity.github.io/trivy](https://aquasecurity.github.io/trivy/) |
-| Cursor-Limit erreicht | Zu zweit arbeiten oder Copilot im Student Pack nutzen |
+| Continue antwortet nicht / Timeout | Cold Start (bis ~200 s) abwarten; sonst Endpunkt-Status prüfen oder **Plan B (Groq)** — s. `SETUP.md` |
+| HTTP 401 in Continue | `apiKey` in `~/.continue/config.yaml` prüfen — s. `SETUP.md` |
+| Tab-Completion fehlt | Läuft Ollama? `ollama list` / `ollama run qwen2.5-coder:1.5b` (Autocomplete ist lokal) |
+| KI-Setup noch nicht fertig | Zu zweit arbeiten (Pairing ist eh erwünscht) — Setup in der Pause nachziehen |
 
 **Musterlösung:** `git checkout vl01-solution` (erst nach dem Lab anschauen!)

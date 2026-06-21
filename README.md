@@ -10,7 +10,7 @@ Hannover, ~200 Mitarbeitende).
 
 | VL | Erweiterung | Schwerpunkt |
 |----|-------------|-------------|
-| 1 | Bestehendes Triage-Tool verbessern | pylint, flake8, Trivy, Cursor/Copilot |
+| 1 | Bestehendes Triage-Tool verbessern | pylint, flake8, Trivy, VS Code + Continue.dev (HomeCloud) |
 | 2 | Tickets per Prompt klassifizieren (Browser, ohne Code) | Zero-/Few-Shot, CoT |
 | 3 | LLM-Anschluss über den Kurs-Endpunkt + Evaluierung | HomeCloud (litellm), Golden Dataset |
 | 4–5 | RAG-Chatbot über die LeineTech-Knowledge-Base (`docs/`) | ChromaDB, Embeddings (Sven, in Arbeit) |

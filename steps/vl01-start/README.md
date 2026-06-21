@@ -9,6 +9,8 @@ aber er ist in schlechtem Zustand (ein Kollege hat ihn "mal schnell" gebaut).
 
 **Eure Aufgabe in VL 1:** den Zustand mit Linter, KI-Assistent und
 Artefakt-Scanner sichtbar machen und verbessern → siehe `labs/vl01-lab.md`.
+KI-Assistent = **VS Code + Continue.dev** gegen den Kurs-Endpunkt (HomeCloud);
+Setup in `SETUP.md`.
 
 ## Ausführen
 

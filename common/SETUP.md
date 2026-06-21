@@ -8,9 +8,11 @@ gelegentlich, im Zweifel die verlinkten Docs prüfen.
 
 Ein interner, self-hosted LLM-Endpunkt (Nortal Estonia AI Studio): ein
 **LiteLLM-Gateway**, das **OpenAI- und Anthropic-kompatibel** ist und vor einem
-vLLM-Inferenz-Node (6× RTX 3090) hängt. Für uns heißt das: jedes Tool, das mit
-der OpenAI-API reden kann (OpenAI SDK, Continue.dev, OpenCode, Cursor mit
-Custom Endpoint, …), funktioniert dagegen — **dauerhaft gratis, aber ohne SLA**.
+vLLM-Inferenz-Node (6× RTX 3090) hängt. Für uns heißt das: OpenAI-kompatible
+Clients (Continue.dev mit `vllm`-Provider, OpenCode, die `litellm`-Library, …)
+sprechen den Endpunkt direkt an — **dauerhaft gratis, aber ohne SLA**. Einzige
+Ausnahme: das **Python-OpenAI-SDK** — sein User-Agent wird vom WAF geblockt,
+deshalb gehen wir durchgängig über litellm/`vllm` (mehr dazu unten).
 
 | Dienst | URL | Zugang |
 |---|---|---|
@@ -51,7 +53,8 @@ curl -s "$OPENAI_BASE_URL/chat/completions" \
 
 ⚠️ **Erste Antwort kann 200–300 s dauern** (Cold Start: Modell wird erst vom
 Storage in die GPUs geladen). Das ist kein Fehler — einmal warten, danach ist
-das Modell „hot".
+das Modell „hot". *(Im Kurs wärmt der Dozent das Modell vor Beginn einmal vor —
+dann ist es für alle direkt „hot".)*
 
 ## Client-Konfiguration
 
@@ -85,22 +88,66 @@ diese Variablen zu setzen. **Default-Modell ist `qwen3.6-35B-A3B-FP8`**; ein
 eigener Modellname kommt ohne `hosted_vllm/`-Präfix in `LLM_MODEL` (das setzt
 `src/llm.py` selbst davor).
 
-### Continue.dev (VS Code)
+### VS Code + Continue.dev — der Kurs-Client (ab VL 1)
 
-`~/.continue/config.yaml` (Auszug):
+Im Kurs nutzen wir **VS Code mit der Continue.dev-Extension**. Zwei Modelle für
+zwei Aufgaben:
 
-```yaml
-models:
-  - name: HomeCloud Qwen
-    provider: openai
-    apiBase: https://llm.homecloud.ee/v1
-    apiKey: <euer-key>
-    model: qwen3.6-35B-A3B-FP8
-    defaultCompletionOptions:
-      contextLength: 131072   # ~128K cappen!
+- **Chat / Edit / Apply** (der „KI-Assistent") → läuft über die **HomeCloud**.
+- **Autovervollständigung (Tab)** → läuft **lokal über Ollama** mit einem
+  winzigen Coder-Modell. Das ist schnell, offline und belastet den geteilten
+  HomeCloud-Endpunkt nicht (Tab-Completion feuert sehr häufig).
+
+**Einmalig:** [Ollama](https://ollama.com) installieren und das
+Autocomplete-Modell ziehen (~1 GB, läuft auch auf der CPU):
+
+```bash
+ollama run qwen2.5-coder:1.5b
 ```
 
-### OpenCode CLI
+*(Sehr schwacher Laptop? `qwen2.5-coder:0.5b` reicht für Autocomplete auch.)*
+
+`~/.continue/config.yaml`:
+
+```yaml
+name: FHDW Kurs-Assistent
+version: 0.0.1
+schema: v1
+models:
+  # KI-Assistent (Chat/Edit/Apply) — Nirk HomeCloud, vllm-Provider (NICHT openai!)
+  - name: HomeCloud Qwen
+    provider: vllm
+    model: qwen3.6-35B-A3B-FP8
+    apiBase: https://llm.homecloud.ee/v1
+    apiKey: <euer-key>
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 131072   # ~128K cappen — schont VRAM am geteilten Endpunkt
+  # Autovervollständigung (Tab) — lokal via Ollama (schnell, offline)
+  - name: Qwen2.5-Coder 1.5B (Tab)
+    provider: ollama
+    model: qwen2.5-coder:1.5b
+    roles:
+      - autocomplete
+```
+
+**`<euer-key>`** durch euren persönlichen Kurs-Key ersetzen. Dateipfad:
+macOS/Linux `~/.continue/config.yaml`, Windows
+`C:\Users\<name>\.continue\config.yaml` (alternativ projektlokal
+`.continue/config.yaml`).
+
+> **Warum `vllm` und nicht `openai`?** Der Endpunkt ist ein vLLM-Server hinter
+> einem LiteLLM-Gateway — der `vllm`-Provider passt direkt dazu. Außerdem blockt
+> der WAF vor dem Gateway gezielt den **OpenAI-SDK-User-Agent** (`OpenAI/Python`
+> → HTTP 403 „Your request was blocked"). Wir sprechen HomeCloud deshalb
+> durchgängig über **litellm/vllm** an — in Continue **und** in `src/llm.py`
+> (siehe oben). Der `vllm`-Provider hat einen eigenen HTTP-Client und ist vom
+> WAF nicht betroffen.
+
+### OpenCode CLI (optional, CLI-Alternative)
 
 `~/.config/opencode/opencode.json` (Auszug):
 
@@ -141,10 +188,12 @@ export OPENAI_API_KEY="<groq-key>"
 | Erste Anfrage hängt minutenlang | Cold Start (200–300 s) — warten, nicht abbrechen |
 | 403, „nur montags 06:00–23:59 …" | Außerhalb des Zeitfensters — der Guardrail blockt, kein Bug. → Plan B (Groq) |
 | HTTP 429 „rate limit" | Zu viele/zu schnelle Anfragen — kurz warten und Anfragetempo drosseln |
+| HTTP 401 / „unauthorized" | `apiKey` falsch oder fehlt → Key prüfen; notfalls in `~/.continue/config.yaml` unter dem Modell `requestOptions:` → `headers:` → `Authorization: "Bearer <euer-key>"` setzen |
+| Tab-Completion kommt nicht | Läuft Ollama? (`ollama list`) Modell gezogen? (`ollama run qwen2.5-coder:1.5b`) — Autocomplete ist **lokal**, nicht HomeCloud |
 | Timeout/Fehler nach Wartezeit | Endpunkt evtl. down → **Plan B (Groq)** nutzen, nicht debuggen |
 | Sehr langsame Antworten | Cloudflare-Drosselung oder Last — kurze Sessions fahren |
 | Agent „lockt" den Endpunkt | Context-Cap (128K) im Client prüfen — s. o. |
-| Whole-Codebase-Aufgaben / große Multi-File-Edits | dafür ist der Endpunkt nicht gedacht → Cursor/Copilot |
+| Whole-Codebase-Aufgaben / große Multi-File-Edits | dafür ist der Endpunkt nicht gedacht → Aufgabe in kleinere Schritte zerlegen, Kontext kappen |
 
-**Faustregel:** HomeCloud = gratis agentic Coding für kurze, fokussierte
-Sessions. Alles Große → Cursor-Studierendenjahr.
+**Faustregel:** HomeCloud = gratis KI-Assistent für kurze, fokussierte
+Sessions. Große Multi-File-Aufgaben in kleinere Schritte zerlegen.
