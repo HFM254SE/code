@@ -123,6 +123,10 @@ models:
       - apply
     defaultCompletionOptions:
       contextLength: 131072   # ~128K cappen — schont VRAM am geteilten Endpunkt
+    requestOptions:
+      extraBodyProperties:
+        chat_template_kwargs:
+          enable_thinking: false   # Reasoning-Modell → Thinking aus (s. Hinweis unten)
   # Autovervollständigung (Tab) — lokal via Ollama (schnell, offline)
   - name: Qwen2.5-Coder 1.5B (Tab)
     provider: ollama
@@ -157,6 +161,16 @@ Dateiname exakt `config.yaml` (nicht `.yml`).
 > (siehe oben). Der `vllm`-Provider hat einen eigenen HTTP-Client und ist vom
 > WAF nicht betroffen.
 
+> **„Thinking" erscheint als Fließtext?** `qwen3.6-35B-A3B-FP8` ist ein
+> **Reasoning-Modell** und liefert seine Denk-Tokens im Feld `reasoning_content`.
+> Continue (**Release**) faltet dieses Feld (noch) nicht in einen einklappbaren
+> „Thinking"-Block, sondern gibt es als Text aus. Deshalb schalten wir Thinking
+> oben per `enable_thinking: false` ab → sauberere, schnellere Antworten und
+> weniger Tokens am geteilten Endpunkt. Wer das Denken *eingeklappt sehen* will:
+> Continue **Pre-Release** installieren (rendert `reasoning_content` als Block —
+> dann den `requestOptions`-Block weglassen). Alternativer Aus-Schalter:
+> `chatOptions:` → `baseSystemMessage: "/no_think"`.
+
 ### OpenCode CLI (optional, CLI-Alternative)
 
 `~/.config/opencode/opencode.json` (Auszug):
@@ -184,6 +198,7 @@ Dateiname exakt `config.yaml` (nicht `.yml`).
 | HTTP 429 „rate limit" | Zu viele/zu schnelle Anfragen — kurz warten und Anfragetempo drosseln |
 | HTTP 401 / „unauthorized" | `apiKey` falsch oder fehlt → Key prüfen; notfalls in `~/.continue/config.yaml` unter dem Modell `requestOptions:` → `headers:` → `Authorization: "Bearer <euer-key>"` setzen |
 | Tab-Completion kommt nicht | Läuft Ollama? (`ollama list`) Modell gezogen? (`ollama run qwen2.5-coder:1.5b`) — Autocomplete ist **lokal**, nicht HomeCloud |
+| „Thinking"/Reasoning als Fließtext | Reasoning-Modell; Continue (Release) faltet `reasoning_content` nicht → `enable_thinking: false` (Config oben) oder Continue **Pre-Release** |
 | Timeout/Fehler nach Wartezeit | Endpunkt evtl. down → kurze Pause, später erneut; nicht lokal debuggen. Bei anhaltendem Ausfall dem Dozenten Bescheid geben |
 | Sehr langsame Antworten | Cloudflare-Drosselung oder Last — kurze Sessions fahren |
 | Agent „lockt" den Endpunkt | Context-Cap (128K) im Client prüfen — s. o. |
