@@ -1,8 +1,8 @@
-# SETUP — Kurs-LLM-Endpunkt (Nirk HomeCloud) & Plan B
+# SETUP — Kurs-LLM-Endpunkt (Nirk HomeCloud)
 
-Anleitung für den **kostenlosen Kurs-Endpunkt** (Nortal Nirk HomeCloud) und den
-**Pflicht-Fallback** (Groq). Stand: 06/2026 — Client-Config-Formate ändern sich
-gelegentlich, im Zweifel die verlinkten Docs prüfen.
+Anleitung für den **kostenlosen Kurs-Endpunkt** (Nortal Nirk HomeCloud).
+Stand: 06/2026 — Client-Config-Formate ändern sich gelegentlich, im Zweifel die
+verlinkten Docs prüfen.
 
 ## Was ist das?
 
@@ -16,9 +16,7 @@ deshalb gehen wir durchgängig über litellm/`vllm` (mehr dazu unten).
 
 | Dienst | URL | Zugang |
 |---|---|---|
-| API (LiteLLM) | `https://llm.homecloud.ee` | API-Key — Account auf Anfrage beim Head of Engineering (Nortal Estonia) |
-| Chat-UI (OpenWebUI) | `https://ai.homecloud.ee` | selbst registrieren, dann Freischaltung durch den Head of Engineering (Nortal Estonia) |
-| Monitoring (Grafana) | `https://grafana.homecloud.ee` | Google-SSO — *hier nachsehen, bevor ihr „kaputt" meldet* |
+| API (LiteLLM) | `https://llm.homecloud.ee` | API-Key erhaltet ihr vom Dozenten |
 
 **Kurs-Modell:** Wir nutzen durchgehend **`qwen3.6-35B-A3B-FP8`** (Qwen3.6-MoE,
 35B Parameter / 3B aktiv, FP8 — Tool-Calling + Reasoning). Mit dem
@@ -28,8 +26,7 @@ deshalb gehen wir durchgängig über litellm/`vllm` (mehr dazu unten).
 
 - **Verfügbarkeit: nur montags 06:00–23:59 (Europe/Berlin).** Außerhalb dieses
   Fensters ist euer Key gesperrt — das ist **Absicht** (Schutz vor Dauerlast),
-  kein Ausfall. Plant Arbeit am Endpunkt in dieses Fenster; sonst → Plan B
-  (Groq).
+  kein Ausfall. Plant Arbeit am Endpunkt in dieses Fenster.
 - **Logging ist aktiv (Datenschutz!).** Eure **Prompts und die Antworten**
   werden geloggt und sind über euren persönlichen API-Key **euch zuordenbar**.
   Gebt deshalb **keine Passwörter, Secrets oder echten Personen-/Kundendaten**
@@ -134,10 +131,23 @@ models:
       - autocomplete
 ```
 
-**`<euer-key>`** durch euren persönlichen Kurs-Key ersetzen. Dateipfad:
-macOS/Linux `~/.continue/config.yaml`, Windows
-`C:\Users\<name>\.continue\config.yaml` (alternativ projektlokal
-`.continue/config.yaml`).
+**`<euer-key>`** durch euren persönlichen Kurs-Key ersetzen.
+
+**Wohin mit der Datei?** Die **globale** Continue-Config liegt im *Benutzerordner*
+(nicht im Projekt) und gilt für alle Projekte — ideal für den Kurs:
+
+- macOS/Linux: `~/.continue/config.yaml`
+- Windows: `%USERPROFILE%\.continue\config.yaml` (= `C:\Users\<name>\.continue\config.yaml`)
+
+Habt ihr dort schon eine **`config.json`** (Default bei frischer Installation)?
+Kein Problem — **sobald eine `config.yaml` existiert, wird sie *statt* der
+(veralteten) `config.json` geladen**; die `config.json` müsst ihr nicht anfassen.
+Dateiname exakt `config.yaml` (nicht `.yml`).
+
+> *Alternativ projektlokal:* `<projekt>/.continue/agents/<name>.yml` — das legt
+> Continues „New Config (YAML)"-Button an, gilt dann aber **nur für dieses
+> Projekt** (greift z. B. nicht in der „Eigener-Code"-Übung). Für den Kurs daher
+> die globale Datei oben bevorzugen.
 
 > **Warum `vllm` und nicht `openai`?** Der Endpunkt ist ein vLLM-Server hinter
 > einem LiteLLM-Gateway — der `vllm`-Provider passt direkt dazu. Außerdem blockt
@@ -165,32 +175,16 @@ macOS/Linux `~/.continue/config.yaml`, Windows
 }
 ```
 
-## Plan B: Groq (Pflicht!)
-
-Der HomeCloud-Endpunkt hat **kein SLA** — er kann ausfallen, Cloudflare drosselt
-teils Verbindungen von außerhalb Estlands, und der Betreiber ist zeitweise
-offline. **Richtet deshalb vorab einen Groq-Account ein** (gratis, sehr schnell,
-OpenAI-kompatibel):
-
-1. `console.groq.com` → Account + API-Key (gratis Free-Tier)
-2. Umschalten = nur zwei Variablen tauschen:
-
-```bash
-export OPENAI_BASE_URL="https://api.groq.com/openai/v1"
-export OPENAI_API_KEY="<groq-key>"
-# Modell z. B.: llama-3.3-70b-versatile (aktuelle Liste: console.groq.com/docs/models)
-```
-
 ## Troubleshooting
 
 | Problem | Lösung |
 |---|---|
 | Erste Anfrage hängt minutenlang | Cold Start (200–300 s) — warten, nicht abbrechen |
-| 403, „nur montags 06:00–23:59 …" | Außerhalb des Zeitfensters — der Guardrail blockt, kein Bug. → Plan B (Groq) |
+| 403, „nur montags 06:00–23:59 …" | Außerhalb des Zeitfensters — der Guardrail blockt, kein Bug. Im Fenster (montags) erneut versuchen |
 | HTTP 429 „rate limit" | Zu viele/zu schnelle Anfragen — kurz warten und Anfragetempo drosseln |
 | HTTP 401 / „unauthorized" | `apiKey` falsch oder fehlt → Key prüfen; notfalls in `~/.continue/config.yaml` unter dem Modell `requestOptions:` → `headers:` → `Authorization: "Bearer <euer-key>"` setzen |
 | Tab-Completion kommt nicht | Läuft Ollama? (`ollama list`) Modell gezogen? (`ollama run qwen2.5-coder:1.5b`) — Autocomplete ist **lokal**, nicht HomeCloud |
-| Timeout/Fehler nach Wartezeit | Endpunkt evtl. down → **Plan B (Groq)** nutzen, nicht debuggen |
+| Timeout/Fehler nach Wartezeit | Endpunkt evtl. down → kurze Pause, später erneut; nicht lokal debuggen. Bei anhaltendem Ausfall dem Dozenten Bescheid geben |
 | Sehr langsame Antworten | Cloudflare-Drosselung oder Last — kurze Sessions fahren |
 | Agent „lockt" den Endpunkt | Context-Cap (128K) im Client prüfen — s. o. |
 | Whole-Codebase-Aufgaben / große Multi-File-Edits | dafür ist der Endpunkt nicht gedacht → Aufgabe in kleinere Schritte zerlegen, Kontext kappen |

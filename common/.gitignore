@@ -7,3 +7,5 @@ eval/results.csv
 .idea/
 .vscode/
 .env
+.continue/
+.claude/
