@@ -12,6 +12,17 @@ Artefakt-Scanner sichtbar machen und verbessern → siehe `labs/vl01-lab.md`.
 KI-Assistent = **VS Code + Continue.dev** gegen den Kurs-Endpunkt (HomeCloud);
 Setup in `SETUP.md`.
 
+## Virtual Environment
+
+In Python würden dependencies global installiert werden, dies würde dafür sorgen dass man viele verschiedene Versionen im globalen Namespace installiert, dies ist ein Anti-Pattern und eine der Lösungen dafür in Python ist das "Virtual Environment". Mit diesem Befehl:
+
+```bash
+# Könnte auch python3 auf eurem System sein
+python -m venv .venv && source .venv/bin/activate
+```
+
+Wird ein Ordner `.venv` in eurem Projekt erstellt, in diesem befindet sich dann ein komplettes Python Environment, mit executables wie `pip`, `python` selbst und anderen. Funfact, ihr könnte dann auch `𝜋thon` benutzen als `python` alternative.
+
 ## Ausführen
 
 ```bash
