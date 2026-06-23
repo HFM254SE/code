@@ -4,7 +4,7 @@ Hier sind FÜNF Spec-Drifts versteckt. Findet sie (mit schemathesis und/oder
 per Hand) und vergleicht mit `api/app.py` bzw. `api/openapi.yaml`. Lösung
 steht weiter unten als Kommentar — erst selbst suchen!
 
-    uvicorn api.drifted_server:app --port 8001
+    python -m uvicorn api.drifted_server:app --port 8001
 """
 
 from fastapi import FastAPI, HTTPException

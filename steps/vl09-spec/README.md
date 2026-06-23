@@ -23,8 +23,8 @@ Neu gegenüber `vl08-agent`:
 pip install -r requirements.txt
 python -m pytest tests/test_openapi_spec.py     # offline, kein Server nötig
 
-uvicorn api.app:app --reload                    # Referenz-Server → :8000/docs
-uvicorn api.drifted_server:app --port 8001      # driftet absichtlich
+python -m uvicorn api.app:app --reload          # Referenz-Server → :8000/docs
+python -m uvicorn api.drifted_server:app --port 8001  # driftet absichtlich
 
 # Drift maschinell finden:
 schemathesis run api/openapi.yaml --url http://localhost:8001 --checks all

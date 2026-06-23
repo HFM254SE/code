@@ -33,7 +33,7 @@ export LLM_API_KEY="<euer-key>"
 
 ```bash
 python -m pytest tests/test_agent_tools.py   # offline, ohne LLM
-python -m src.agent T-1001                   # Agent löst eine VPN-Frage per KB
+python -m src.agent T-1006                   # Agent löst eine VPN-Frage per KB
 python -m src.agent T-1003                   # Software-Bug — wird eingeordnet
 python -m src.agent T-1030                   # Injection → sofort eskaliert (VL 6!)
 ```

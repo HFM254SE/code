@@ -4,7 +4,7 @@
 Schwachstelle: T-1030), und baut danach selbst zwei Verteidigungsschichten.
 Am Ende messt ihr, was eure Abwehr fängt — und was bewusst durchrutscht.
 
-**Dauer:** ~90 Minuten (Teil 1: ~20 min · Teil 2: ~30 min · Teil 3: ~25 min · Abschluss: ~15 min)
+**Dauer:** ~90 Minuten (Setup: ~5 min · Teil 1: ~20 min · Teil 2: ~30 min · Teil 3: ~25 min · Abschluss: ~10 min)
 
 ---
 
@@ -22,6 +22,16 @@ export LLM_API_KEY="<euer-key>"
 > Endpunkt down (kein SLA)? Teil 1 geht auch gegen Plan B (Groq, siehe
 > `SETUP.md`). Teil 2 (der Scanner) und die Tests laufen **komplett offline**,
 > ganz ohne LLM.
+
+---
+
+## Warm-up — Lakera Gandalf (~5 min)
+
+Browser auf `gandalf.lakera.ai` (kostenlos, kein Login nötig): Bringt die KI
+dazu, euch das Passwort zu verraten. Das ist Prompt Leaking als Spiel und
+stimmt aufs Mindset ein — *jede* Instruktion ist angreifbar.
+
+Schafft ihr Level 1–3 in 5 Minuten? Wer kommt am weitesten?
 
 ---
 
@@ -90,13 +100,13 @@ Ein Scanner, der die Hälfte der echten Tickets blockt, ist im Support
 
 ---
 
-## Teil 3 — Defense in Depth & Grenzen (Gruppen, ~25 min)
+## Teil 3 — Defense in Depth & Grenzen (Einzelarbeit, ~25 min)
 
 In `eval/injections.jsonl` liegen 12 Angriffe. **Zwei davon (`INJ-10`
 Paraphrase, `INJ-11` Suaheli) sollen NICHT erkannt werden** — euer Scanner
 wird sie durchlassen, und das ist kein Bug.
 
-**Aufgabe (2er-/3er-Gruppen):**
+**In Einzelarbeit:**
 
 1. Lasst euren Scanner gegen alle 12 laufen. Wie viele fangt ihr? Welche
    nicht? (Erwartung: 10 von 12.)
@@ -115,7 +125,7 @@ wird sie durchlassen, und das ist kein Bug.
 | LLM06 Excessive Agency | | |
 | LLM07 System Prompt Leakage | | |
 
-**Abschlusspitch (2 min/Gruppe):** Wirkungsvollster Angriff, beste Abwehr, und
+**Kurz-Notiz / optionale gemeinsame Besprechung am Ende (2 min):** Wirkungsvollster Angriff, beste Abwehr, und
 was in Produktion noch fehlt (Rate-Limiting, Monitoring/Langfuse, Human-in-the-Loop
 für die in VL 7/8 kommenden Agenten-Aktionen).
 
@@ -126,6 +136,6 @@ für die in VL 7/8 kommenden Agenten-Aktionen).
 | Problem | Lösung |
 |---|---|
 | `scan` findet T-1030 nicht | Branch prüfen — ungehärtet (`vl03-evaluation`) vs. gehärtet (`vl06-guardrails`); der Scanner lebt erst ab eurem `src/guardrails.py` |
-| Tests rot bei `test_grenzen_des_scanners` | Ihr erkennt jetzt INJ-10/INJ-11 — entweder Pattern zu breit (False-Positive-Risiko!) oder `injections.jsonl` anpassen |
+| Tests rot bei `test_grenzen_des_scanners_sind_dokumentiert` | Ihr erkennt jetzt INJ-10/INJ-11 — entweder Pattern zu breit (False-Positive-Risiko!) oder `injections.jsonl` anpassen |
 | LLM stuft T-1030 immer korrekt ein | Manche Modelle sind robuster; testet ein anderes Modell (`LLM_MODEL=…`) — die Lücke ist modellabhängig, das ist selbst eine Erkenntnis |
 | `ModuleNotFoundError: litellm` beim `scan` | `pip install -r requirements.txt` — `scan` ist offline, aber `main.py` lädt auch die LLM-Pfade |

@@ -6,7 +6,7 @@ abweicht. Gebaut mit FastAPI, weil FastAPI die OpenAPI-Spec aus dem Code
 selbst generiert (`/docs`, `/openapi.json`) — so lässt sich Drift direkt
 maschinell prüfen.
 
-    uvicorn api.app:app --reload
+    python -m uvicorn api.app:app --reload
     # Doku unter http://localhost:8000/docs
 """
 

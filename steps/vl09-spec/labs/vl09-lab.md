@@ -31,9 +31,7 @@ Lasst in eine **neue Datei** `api/generated.py` generieren — und schaut euch
 `api/app.py` vorher *nicht* an (sonst kennt euer Assistent die Lösung auch).
 Prompt:
 ```
-Generiere einen FastAPI-Server aus dieser OpenAPI-Spec. Pydantic-Models für
-alle Schemas, ein Router pro Tag, korrekte Status-Codes. Lade die Tickets aus
-data/tickets.json über src.ticket_loader.
+Generiere einen FastAPI-Server aus dieser OpenAPI-Spec in eine NEUE Datei api/generated.py. Pydantic-Models für alle Schemas, ein Router pro Tag, korrekte Status-Codes (201/202/404). Lade die Tickets aus data/tickets.json über src.ticket_loader, nutze src.triage für /triage.
 ```
 
 **Aufgabe B — Gegen die Referenz prüfen:** Vergleicht das Ergebnis mit
@@ -80,7 +78,7 @@ größten Effekt? Was fehlte?
 
 **Toolgestützt:**
 ```bash
-uvicorn api.drifted_server:app --port 8001 &
+python -m uvicorn api.drifted_server:app --port 8001 &
 schemathesis run api/openapi.yaml --url http://localhost:8001 --checks all
 ```
 
@@ -115,6 +113,6 @@ Drift war am schwersten zu finden — und welcher in Produktion am gefährlichst
 | Problem | Lösung |
 |---|---|
 | `ModuleNotFoundError: fastapi` | `pip install -r requirements.txt` |
-| `uvicorn: command not found` | `python -m uvicorn api.app:app --reload` |
+| Server startet nicht | immer `python -m uvicorn ...` verwenden (nicht das bare `uvicorn`-Kommando) |
 | schemathesis findet nichts | läuft der **drifted** Server auf Port 8001? Base-URL prüfen |
 | Generierter Code importiert nichts aus `src/` | im Prompt explizit auf `src.ticket_loader` / `src.triage` verweisen — oder `CLAUDE.md` nutzen (Teil 2!) |

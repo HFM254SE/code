@@ -76,7 +76,7 @@ Füllt die drei TODOs:
 Ausführen und den Tool-Verlauf beobachten:
 
 ```bash
-python -m src.agent T-1001      # VPN-Frage → kb_search → Antwort
+python -m src.agent T-1006      # VPN-Frage → kb_search → Antwort
 python -m src.agent T-1018      # einfache Frage → KB-Lösung
 python -m src.agent T-1003      # Rechnungsmodul-Bug → einordnen, ggf. eskalieren
 ```
@@ -86,7 +86,7 @@ python -m src.agent T-1003      # Rechnungsmodul-Bug → einordnen, ggf. eskalie
 
 ---
 
-## Teil 3 — Sicherheit & Grenzen (Gruppen, ~20 min)
+## Teil 3 — Sicherheit & Grenzen (Einzelarbeit, ~20 min)
 
 **Aufgabe A — Der Angriff von VL 6, jetzt gegen einen Agenten:**
 ```bash
@@ -100,7 +100,7 @@ Ticket erreicht das Modell gar nicht. **Diskutiert:** Warum ist das bei einem
 Injection zu *Aktionen* verleitet werden, nicht nur zu falschem Text.)
 
 **Aufgabe B — Least Privilege:** Der Agent hat genau 3 Tools, keines
-destruktiv. Skizziert (2er-/3er-Gruppen): Welche Tools bräuchte ein
+destruktiv. Skizziert für euch: Welche Tools bräuchte ein
 *produktiver* LeineTech-Agent (Ticket schließen, Mail senden, Konto
 zurücksetzen)? Welche davon dürfen **nie** ohne menschliche Freigabe laufen?
 Wo genau setzt ihr den Human-in-the-Loop?
@@ -115,7 +115,7 @@ Wo genau setzt ihr den Human-in-the-Loop?
 
 ## Teil 4 — Reflexion (~15 min)
 
-**Pitch je Gruppe (2–3 min):** Bei welchem Ticket hat der Agent gut/schlecht
+**Kurze gemeinsame Besprechung (2–3 min je Person):** Bei welchem Ticket hat der Agent gut/schlecht
 entschieden? Welches Tool wurde unnötig oder gar nicht aufgerufen?
 
 **Leitfragen:**

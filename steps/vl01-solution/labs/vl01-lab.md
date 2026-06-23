@@ -3,7 +3,7 @@
 **Ziel:** Linter, KI-Assistent und Artefakt-Scanner auf ein echtes (schlechtes)
 Projekt loslassen — und die Ergebnisse **kritisch bewerten**.
 
-**Dauer:** ~40 Minuten geführt + ~35 Minuten offene Übung.
+**Dauer:** ~45 Minuten geführt + ~35 Minuten offene Übung.
 
 ---
 
@@ -61,7 +61,7 @@ flake8 src/ --max-line-length 120
    - eine reine Stil-Konvention (C),
    - einen möglichen Bug (W),
    - einen Code-Smell / Refactoring-Kandidaten (R).
-3. Diskutiert zu zweit: Welche 3 Findings sind die **gefährlichsten**?
+3. **Entscheidet selbst:** Welche 3 Findings sind die **gefährlichsten**? Notiert eure Begründung.
    (Tipp: `except:` ohne Exception-Typ, `== None`, veränderbare
    Default-Argumente, globaler Zustand …)
 

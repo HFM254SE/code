@@ -4,7 +4,7 @@
 # vorgehalten; certifi/urllib3 sind transitive Pins von requests.)
 requests==2.33.0
 urllib3==2.7.0
-certifi==2024.7.4
+certifi==2024.12.14
 PyYAML==6.0.2
 Jinja2==3.1.6
 

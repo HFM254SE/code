@@ -4,7 +4,7 @@
 API ins LeineTech-Projekt integrieren — und dann **messen**, ob es die
 Keyword-Triage aus VL 1 wirklich schlägt.
 
-**Dauer:** ~90 Minuten (Teil 1: ~25 min · Teil 2: ~25 min · Teil 3: ~25 min · Ergebnisse: ~10 min)
+**Dauer:** ~90 Minuten (Setup ~10 min · Teil 1 ~25 min · Teil 2 ~25 min · Teil 3 ~25 min · Wrap-up ~5 min)
 
 ---
 
@@ -110,13 +110,13 @@ Sekunden pro Ticket); mit `--all` laufen alle 30.
 
 ---
 
-## Teil 3 — Deployment-Szenario (Gruppenaufgabe, ~25 min)
+## Teil 3 — Deployment-Szenario (Einzelarbeit, ~25 min)
 
 Zurück zur Management-Perspektive. LeineTech will die LLM-Triage **produktiv**
 nehmen — und ihr habt jetzt echte Messwerte aus Teil 2.
 
-Analysiert in 2er-/3er-Gruppen **eines** dieser Szenarien (oder euer eigenes
-aus der Praxis):
+Wählt **EIN** Szenario (oder euer eigenes aus der Praxis) und analysiert es
+allein:
 
 1. LeineTech-Ticket-Triage produktiv (interne Mitarbeiterdaten in Tickets!)
 2. Internes Code-Review-Tool für eine Bank
@@ -128,7 +128,8 @@ Datensensitivität · Anfragevolumen · Latenz-Anforderung · Budget ·
 Team-Expertise · DSGVO-Relevanz.
 
 **Ergebnis:** Empfehlung (Cloud API / On-Prem / Edge) mit 3 Begründungen
-und den wichtigsten DSGVO-Maßnahmen. **Pitch: 2–3 min pro Gruppe.**
+und den wichtigsten DSGVO-Maßnahmen. **Optional:** in der Abschluss-Besprechung
+kurz vorstellen.
 
 ---
 
