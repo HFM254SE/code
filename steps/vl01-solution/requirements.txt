@@ -8,6 +8,12 @@ certifi==2024.12.14
 PyYAML==6.0.2
 Jinja2==3.1.6
 
+# LLM-Anbindung: ab VL 3 spricht das Lab per litellm den Kurs-Endpunkt an
+# (HomeCloud, OpenAI-kompatibel). Hier bereits vorgehalten, weil das VL3-Lab
+# von diesem Branch startet und `pip install -r requirements.txt` litellm ziehen
+# soll (Pin identisch zu den vl03-Branches, damit kein Versionssprung entsteht).
+litellm==1.89.2
+
 # Entwicklung / Qualitaet
 pytest==9.0.3
 pylint==3.3.1
