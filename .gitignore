@@ -5,6 +5,7 @@ __pycache__/
 venv/
 .DS_Store
 eval/results.csv
+chroma_db/
 .idea/
 .vscode/
 .step-build/

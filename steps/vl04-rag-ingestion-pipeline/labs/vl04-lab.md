@@ -24,26 +24,35 @@ source .venv/bin/activate           # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2) Environment korrekt einstellen:
+2) Kurs-Endpunkt in der Umgebung setzen (wie in VL 3, siehe `SETUP.md`):
 
-Benennt die `.env.example` in `.env` um, öffnet sie, setzt euren API Key ein und speichert die Datei.
+```bash
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"
+export LLM_API_KEY="<euer-key>"   # Key auf Anfrage, siehe SETUP.md
+```
 
-3) Prüfen, ob alles läuft (sentence transformer download kann etwas dauern):
+*(Die Variablen gelten nur in dieser Shell — bei einem neuen Terminal erneut
+setzen. Wir nutzen bewusst `export` statt einer `.env`-Datei.)*
+
+3) Prüfen, ob ChromaDB läuft:
 
 ```bash
 python -c "import chromadb; print('ChromaDB', chromadb.__version__)"
-python -c "from sentence_transformers import SentenceTransformer; print('sentence-transformers OK')"
 ```
 
-> **Hinweis:** Der erste Import von `sentence-transformers` lädt das Modell
-> `all-MiniLM-L6-v2` (~80 MB). Je nach WLAN kann das dauern — startet
-> den Download frühzeitig.
-
-4) Prüfen, ob die Verbindung zur LMM funktioniert:
+4) Prüfen, ob die Verbindung zum Kurs-Endpunkt funktioniert (wir nutzen ihn
+   sowohl fürs Chatten als auch fürs **Embedding**):
 
 ```bash
 python -c "from src.llm import chat; response = chat(\"Hey 👋\"); print(response)"
+python -c "from src.embedder import embed_text; print('Embedding-Dim:', len(embed_text('Testsatz')))"
 ```
+
+> **Hinweis:** Das Embedding läuft über das Modell `qwen3-embed-4b` am
+> Kurs-Endpunkt (HomeCloud) — dieselbe Anbindung wie der Chat. Es braucht also
+> die oben gesetzten `LLM_BASE_URL` / `LLM_API_KEY` (siehe SETUP.md), der Endpunkt
+> ist nur **montags** verfügbar und die erste Anfrage kann durch den Cold Start
+> 200–300 s dauern. Erwartete Embedding-Dimension: **2560**.
 
 Die Wissensbasis liegt in `docs/` — 8 Markdown-Dateien mit
 IT-Dokumentation (VPN, Drucker, Passwörter, E-Mail, …). Schaut euch 2–3
@@ -139,19 +148,32 @@ Jetzt wird aus Text Mathematik: **Chunking → Embedding → Vektor-DB**.
 
 ### Aufgabe A — Embeddings erzeugen
 
-Erstellt `src/embedder.py`:
+Erstellt `src/embedder.py`. Die Embeddings kommen — wie der Chat in VL 3 — vom
+Kurs-Endpunkt (HomeCloud), angesprochen über **litellm** mit dem
+`hosted_vllm/`-Provider. Base-URL und API-Key holt ihr aus `src/llm.py`, damit
+die Konfiguration an *einer* Stelle liegt:
 
 ```python
-from sentence_transformers import SentenceTransformer
+import litellm
+from src.llm import get_api_key, get_base_url
 
-MODEL_NAME = "all-MiniLM-L6-v2"
-
-def get_model() -> SentenceTransformer:
-    """Lädt das Embedding-Modell (gecacht nach dem ersten Aufruf)."""
+DEFAULT_MODEL = "qwen3-embed-4b"     # das Embedding-Modell des Kurs-Endpunkts
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Erzeugt Embeddings für eine Liste von Texten."""
+    """Erzeugt Embeddings für eine Liste von Texten über den Kurs-Endpunkt."""
+    # litellm.embedding(model=f"hosted_vllm/{DEFAULT_MODEL}", input=texts,
+    #                    api_base=get_base_url(), api_key=get_api_key())
+    # -> response["data"] nach "index" ordnen und die "embedding"-Vektoren zurückgeben
 ```
+
+**Anforderungen:**
+
+1. Provider-Präfix `hosted_vllm/` verwenden (WAF-sicher, s. `src/llm.py`) — das
+   OpenAI-SDK würde geblockt.
+2. Die Reihenfolge der Vektoren muss zur Eingabereihenfolge passen (litellm
+   liefert die Treffer mit einem `index`-Feld — danach sortieren).
+3. Für eine leere Eingabeliste eine leere Liste zurückgeben (spart einen
+   unnötigen Netz-Call).
 
 Testet und beobachtet:
 
@@ -165,7 +187,7 @@ print(f'Erste 5 Werte: {vecs[0][:5]}')
 "
 ```
 
-Erwartet: 3 Vektoren mit je **384 Dimensionen**.
+Erwartet: 3 Vektoren mit je **2560 Dimensionen** (`qwen3-embed-4b`).
 
 ### Aufgabe B — In ChromaDB speichern
 
@@ -219,7 +241,7 @@ Erwartete Ausgabe (ungefähr):
 ```
 8 Dokumente geladen
 42 Chunks erzeugt
-42 Embeddings berechnet (384 Dimensionen)
+42 Embeddings berechnet (2560 Dimensionen)
 Collection 'leinetech_kb': 42 Einträge gespeichert
 ```
 
@@ -315,9 +337,10 @@ die ihr heute indexiert habt, werden dem LLM als Kontext übergeben.
 | Problem                                        | Lösung                                                                                                                                    |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `ModuleNotFoundError: chromadb`                | `pip install -r requirements.txt`                                                                                                         |
-| Modell-Download langsam                        | Vom Nachbarn kopieren: `~/.cache/huggingface/hub/` — oder Hörsaal-Hotspot                                                                 |
+| Erste Embedding-Anfrage hängt minutenlang      | Cold Start am Kurs-Endpunkt (200–300 s) — warten, nicht abbrechen (s. SETUP.md)                                                          |
+| 403 / „nur montags …" beim Embedding           | Endpunkt außerhalb des Zeitfensters oder `LLM_API_KEY`/`LLM_BASE_URL` fehlen — s. SETUP.md                                                |
 | `sqlite3.OperationalError` beim ChromaDB-Start | `chroma_db/`-Verzeichnis löschen und Pipeline neu laufen lassen                                                                           |
-| Embedding dauert ewig                          | Nur 8 Dokumente × ~5 Chunks = ~40 Embeddings — sollte in Sekunden fertig sein. Falls nicht: `pip install --upgrade sentence-transformers` |
+| `InvalidDimensionException` / Dimensionsfehler | Collection mit einem anderen Modell befüllt — `chroma_db/` löschen und neu ingesten (Gleiches-Modell-Regel!)                              |
 | Suchergebnisse alle gleich schlecht            | Chunk-Größe zu groß? Prüft mit `chunk_size=300`. Oder: wurde `python -m src.ingest` nach Codeänderungen erneut ausgeführt?                |
 | `chromadb.errors.DuplicateIDError`             | Pipeline doppelt gelaufen — Collection löschen: `client.delete_collection("leinetech_kb")`                                                |
 | `docs/` nicht gefunden                         | Aus dem Repo-Root starten: `python -m src.ingest docs`                                                                                     |
