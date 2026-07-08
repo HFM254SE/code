@@ -69,3 +69,7 @@ else
   cp -R "$REPO_ROOT/steps/$STEP/." "$DEST"
   rm -rf "$DEST/venv"
 fi
+
+# 4. Cleanup
+rm -rf "$DEST/common"
+rm -rf "$DEST/scripts"
