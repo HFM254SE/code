@@ -1,10 +1,10 @@
-# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline`
+# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline-solution`
 
-Endzustand des **Labs in VL 4**: die komplette **Ingestion-Pipeline** für ein
-RAG-System. Aus den 8 Markdown-Artikeln der LeineTech-Wissensbasis (`docs/`)
-wird ein durchsuchbarer Vektor-Index — die Grundlage für den RAG-Chatbot in VL 5.
+**Musterlösung** nach dem Lab in **VL 4 (RAG: Ingestion-Pipeline)** — und
+zugleich der **Startpunkt für VL 5**. Aus den 8 Markdown-Artikeln der
+LeineTech-Wissensbasis (`docs/`) wird ein durchsuchbarer Vektor-Index.
 
-Neu gegenüber `vl03-evaluation`:
+Neu gegenüber `vl04-rag-ingestion-pipeline-start` (im Lab gebaut):
 
 - `src/loader.py` — lädt die `.md`-Dokumente in ein einheitliches Format.
 - `src/chunker.py` — **rekursives Chunking** (Absätze → Zeilen → Sätze) mit
