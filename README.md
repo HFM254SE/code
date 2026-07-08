@@ -39,11 +39,12 @@ git checkout vl09-spec                            # VL 9: OpenAPI-Spec + Drift-P
 
 Jeder Branch ist **vollständig** (Code + Daten + Docs + Lab-Anleitung in
 `labs/`) und die Anleitungen funktionieren auch ohne Vorlesung zum Nacharbeiten.
-(VL 2, 4–5, 7, 10 haben keinen eigenen Code-Branch: VL 2 ist browserbasiert,
-VL 7 und 10 sind Theorie/Fallstudie. **VL 4/5 (RAG, Sven) ist in Arbeit** —
-der Lab-Code liegt unter `steps/vl04-rag-ingestion-pipeline` und baut auf
-`vl03-evaluation` auf; einen eigenen Checkpoint-Branch gibt es noch nicht,
-die Folien liegen im separaten `slides`-Repo.)
+(VL 2, 7, 10 haben keinen eigenen Code-Branch: VL 2 ist browserbasiert,
+VL 7 und 10 sind Theorie/Fallstudie. **VL 4/5 (RAG, Sven):** Der Lab-Code
+liegt in den Branches `vl04-rag-ingestion-pipeline-start` (Lab-Start) und
+`vl04-rag-ingestion-pipeline-solution` (Musterlösung = Start für VL 5) und
+baut auf `vl03-evaluation` auf; die Anleitung steht in `labs/vl04-lab.md`.
+Die Folien liegen im separaten `slides`-Repo.)
 
 ## Inhalt eines Checkpoints
 
