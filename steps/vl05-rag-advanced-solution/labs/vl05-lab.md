@@ -374,14 +374,14 @@ Wahrheit. Für Hochrisiko bleibt menschliche Evaluation der Goldstandard.
 
 ## Troubleshooting
 
-| Problem                                      | Lösung                                                                                                          |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `ImportError: embedding_search`              | Ihr seid nicht auf dem VL-4-Solution-Stand — `git checkout vl04-rag-ingestion-pipeline-solution`                |
-| Collection ist leer                          | Erst indexieren: `python -m src.ingest docs`                                                                    |
-| Erste Anfrage hängt minutenlang              | Cold Start am Kurs-Endpunkt (200–300 s) — warten, nicht abbrechen (s. SETUP.md)                                 |
-| 403 / „nur montags …"                        | Endpunkt außerhalb des Zeitfensters oder `LLM_API_KEY`/`LLM_BASE_URL` fehlen — s. SETUP.md                      |
-| LLM ignoriert den Kontext / halluziniert     | Enthaltungs- und Grounding-Anweisung im System-Prompt prüfen (Teil 1)                                           |
-| RAG antwortet immer „keine Information"      | Kontextblock leer? `n_results` > 0 und `build_context` prüfen — kommen Treffer an?                              |
-| Hybrid ≙ Dense (kein Unterschied)            | Kandidatenfenster zu klein — beide Suchen mit `n_results * 4` aufrufen                                          |
-| Judge gibt keine parsebare Zahl zurück       | `temperature=0.0`, Zahl per Regex extrahieren, Prompt auf „nur die Zahl" verschärfen                            |
-| `InvalidDimensionException`                  | Collection mit anderem Embedding-Modell befüllt — `chroma_db/` löschen und neu ingesten (Gleiches-Modell-Regel) |
+| Problem                                  | Lösung                                                                                                          |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ImportError: embedding_search`          | Ihr seid nicht auf dem VL-4-Solution-Stand — `git checkout vl04-rag-ingestion-pipeline-solution`                |
+| Collection ist leer                      | Erst indexieren: `python -m src.ingest docs`                                                                    |
+| Erste Anfrage hängt minutenlang          | Cold Start am Kurs-Endpunkt (200–300 s) — warten, nicht abbrechen (s. SETUP.md)                                 |
+| 403 / „nur montags …"                    | Endpunkt außerhalb des Zeitfensters oder `LLM_API_KEY`/`LLM_BASE_URL` fehlen — s. SETUP.md                      |
+| LLM ignoriert den Kontext / halluziniert | Enthaltungs- und Grounding-Anweisung im System-Prompt prüfen (Teil 1)                                           |
+| RAG antwortet immer „keine Information"  | Kontextblock leer? `n_results` > 0 und `build_context` prüfen — kommen Treffer an?                              |
+| Hybrid ≙ Dense (kein Unterschied)        | Kandidatenfenster zu klein — beide Suchen mit `n_results * 4` aufrufen                                          |
+| Judge gibt keine parsebare Zahl zurück   | `temperature=0.0`, Zahl per Regex extrahieren, Prompt auf „nur die Zahl" verschärfen                            |
+| `InvalidDimensionException`              | Collection mit anderem Embedding-Modell befüllt — `chroma_db/` löschen und neu ingesten (Gleiches-Modell-Regel) |
