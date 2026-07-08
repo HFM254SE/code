@@ -1,0 +1,18 @@
+# LeineTech Ticket-Triage — Abhaengigkeiten
+requests==2.33.0
+urllib3==2.7.0
+certifi==2024.7.4
+PyYAML==6.0.2
+Jinja2==3.1.6
+
+# LLM-Anbindung (VL 3): litellm gegen den Kurs-Endpunkt (HomeCloud, OpenAI-kompatibel)
+litellm==1.89.2
+
+# RAG Ingestion-Pipeline (VL 4): Vektordatenbank
+# (Embeddings laufen ueber den Kurs-Endpunkt/HomeCloud via litellm — s. src/embedder.py)
+chromadb==1.0.7
+
+# Entwicklung / Qualitaet
+pytest==9.0.3
+pylint==3.3.1
+flake8==7.1.1

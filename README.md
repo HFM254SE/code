@@ -1,57 +1,82 @@
-# FHDW — Code zur Vorlesung Automatisierung im Software Engineering (Q3 2026) 
+# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline-solution`
 
-Hands-on **Lab-Code**
+**Musterlösung** nach dem Lab in **VL 4 (RAG: Ingestion-Pipeline)** — und
+zugleich der **Startpunkt für VL 5**. Aus den 8 Markdown-Artikeln der
+LeineTech-Wissensbasis (`docs/`) wird ein durchsuchbarer Vektor-Index.
 
-## Das Kursprojekt: LeineTech Ticket-Triage („roter Faden")
+Neu gegenüber `vl04-rag-ingestion-pipeline-start` (im Lab gebaut):
 
-Über alle Vorlesungen hinweg wird am gleichen System gearbeitet: dem
-internen **Support-Ticket-System der LeineTech GmbH** (fiktiver IT-Dienstleister,
-Hannover, ~200 Mitarbeitende).
+- `src/loader.py` — lädt die `.md`-Dokumente in ein einheitliches Format.
+- `src/chunker.py` — **rekursives Chunking** (Absätze → Zeilen → Sätze) mit
+  Überlappung und stabilen `chunk_id`s.
+- `src/embedder.py` — Embeddings mit `qwen3-embed-4b` (2560 Dim.) über den
+  **Kurs-Endpunkt (HomeCloud)**, via litellm — dieselbe Anbindung wie der Chat.
+- `src/vectorstore.py` — persistente **ChromaDB**-Collection unter `./chroma_db`
+  (idempotentes `upsert`).
+- `src/ingest.py` — verbindet alles zur Pipeline **Dokumente → Chunks →
+  Embeddings → ChromaDB**.
+- `src/search.py` — semantische Suche + Keyword-Baseline zum Vergleich.
 
-| VL | Erweiterung | Schwerpunkt |
-|----|-------------|-------------|
-| 1 | Bestehendes Triage-Tool verbessern | pylint, flake8, Trivy, VS Code + Continue.dev (HomeCloud) |
-| 2 | Tickets per Prompt klassifizieren (Browser, ohne Code) | Zero-/Few-Shot, CoT |
-| 3 | LLM-Anschluss über den Kurs-Endpunkt + Evaluierung | HomeCloud (litellm), Golden Dataset |
-| 4–5 | RAG-Chatbot über die LeineTech-Knowledge-Base (`docs/`) | ChromaDB, Embeddings (Sven, in Arbeit) |
-| 6 | Das eigene System angreifen und absichern | Prompt Injection, Guardrails |
-| 7–8 | Triage zum Tool-nutzenden Agenten ausbauen | LangGraph, MCP |
-| 9 | Spec-Driven Development am Projekt | OpenAPI, CLAUDE.md |
-| 10 | Fallstudie: Einordnung nach EU AI Act | — |
+Embeddings laufen — wie Chat/Klassifikation (`src/llm.py`, VL 3) — über den
+Kurs-Endpunkt. Es braucht also `LLM_BASE_URL` / `LLM_API_KEY` in der Umgebung
+(siehe SETUP.md); der Endpunkt ist nur montags verfügbar und hat Cold Starts.
 
+## Pipeline füllen
 
-## Checkpoint-Branches
-
-Jeder Lab-Zustand ist ein Branch — wer hängen bleibt oder eine Session
-verpasst, steigt einfach wieder ein:
-
-```
-git checkout vl01-start        # VL 1: das "schlechte" Tool (Lab-Start)
-git checkout vl01-solution     # VL 1: Musterlösung = Start für VL 3
-git checkout vl03-llm-client   # VL 3: LLM-Anschluss über den Kurs-Endpunkt fertig
-git checkout vl03-evaluation   # VL 3: Evaluierung Regeln vs. LLM fertig
-git checkout vl06-guardrails   # VL 6: Injection-Scanner + Output-Filter
-git checkout vl08-agent        # VL 8: Tool-nutzender LangGraph-Agent
-git checkout vl09-spec         # VL 9: OpenAPI-Spec + Drift-Prüfung
+```bash
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"
+export LLM_API_KEY="<euer-key>"      # siehe SETUP.md
+python -m src.ingest docs
 ```
 
-Jeder Branch ist **vollständig** (Code + Daten + Docs + Lab-Anleitung in
-`labs/`) und die Anleitungen funktionieren auch ohne Vorlesung zum Nacharbeiten.
-(VL 2, 4–5, 7, 10 haben keinen eigenen Code-Branch: VL 2 ist browserbasiert,
-VL 7 und 10 sind Theorie/Fallstudie. **VL 4/5 (RAG, Sven) ist in Arbeit** —
-der Lab-Code liegt unter `steps/vl04-rag-ingestion-pipeline` und baut auf
-`vl03-evaluation` auf; einen eigenen Checkpoint-Branch gibt es noch nicht,
-die Folien liegen im separaten `slides`-Repo.)
-
-## Inhalt eines Checkpoints
+Erwartete Ausgabe (ungefähr):
 
 ```
-data/tickets.json    30 Support-Tickets der LeineTech GmbH (Mai 2026)
-docs/                Knowledge-Base der LeineTech-IT (8 Artikel) → RAG-Korpus ab VL 4
-eval/golden.jsonl    Menschliche Soll-Labels für alle 30 Tickets
-src/                 Das Triage-Tool im jeweiligen Ausbauzustand
-tests/               pytest — Sicherheitsnetz bei (KI-)Refactorings
-labs/                Schritt-für-Schritt-Lab-Anleitungen
-SETUP.md             Kurs-LLM-Endpunkt (Nirk HomeCloud) + Groq-Fallback einrichten
+8 Dokumente geladen
+80 Chunks erzeugt
+80 Embeddings berechnet (2560 Dimensionen)
+Collection 'leinetech_kb': 80 Einträge gespeichert
 ```
 
+*(Die genaue Chunk-Zahl hängt von `--chunk-size`/`--chunk-overlap` ab —
+mit den Defaults 500/50 sind es ~80.)*
+
+## Suchen
+
+```bash
+python -m src.search "Wie verbinde ich mich mit dem VPN?"
+python -m src.search "Mein Passwort ist abgelaufen" --mode keyword
+python -m src.search "Drucker druckt nicht" --n 3
+```
+
+Pro Treffer: **Rang, Ähnlichkeitswert, Quelle, Textvorschau**. Der `keyword`-Modus
+(reine Wortüberlappung) dient dem Vergleich — er gewinnt bei exakten Fachbegriffen,
+verliert bei Synonymen und Umschreibungen.
+
+## Embedding-Modell
+
+Fest verdrahtet ist `qwen3-embed-4b` (2560 Dim.), das einzige Embedding-Modell
+des Kurs-Endpunkts. Überschreiben nur zu Testzwecken mit `EMBEDDING_MODEL`:
+
+```bash
+EMBEDDING_MODEL=<anderes-modell> python -m src.ingest docs
+```
+
+> **Gleiches-Modell-Regel:** Query und Chunks müssen mit demselben Modell
+> eingebettet werden — sonst liegen die Vektoren in unterschiedlichen Räumen
+> (oder haben nicht mal dieselbe Dimension) und die Suche wird zu Rauschen. Wer
+> `EMBEDDING_MODEL` wechselt, muss die Collection neu indexieren: `chroma_db/`
+> löschen und `python -m src.ingest docs` erneut ausführen.
+
+## Tests
+
+```bash
+pytest                      # Loader/Chunker (offline, kein Netz/Endpunkt nötig)
+```
+
+Die Tests decken Laden und Chunking ab — die netzabhängigen Schritte (Embedding
+über HomeCloud, ChromaDB) werden im Lab manuell geprüft (siehe `labs/vl04-lab.md`).
+
+> Hier endet der VL-4-Stand. In VL 5 kommt der **Augment + Generate**-Schritt
+> dazu: Die hier indexierten Chunks werden dem LLM als Kontext übergeben — aus
+> der Suche wird ein RAG-Chatbot.
