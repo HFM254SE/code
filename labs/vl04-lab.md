@@ -13,7 +13,7 @@ für den RAG-Chatbot in VL 5.
 
 ```bash
 cd leinetech
-git checkout vl03-evaluation        # wir bauen auf dem VL-3-Stand auf
+git checkout vl04-rag-ingestion-pipeline-start 
 ```
 
 1) Virtuelle Umgebung aktivieren und Abhängigkeiten installieren:
