@@ -20,6 +20,7 @@ Unbeantwortbare Fragen zaehlen als korrekt, wenn das System sich **enthaelt**
 Aufruf:
     python -m src.rag_eval                    # Baseline: dense
     python -m src.rag_eval --retriever hybrid
+    python -m src.rag_eval --retriever hybrid --n 3   # kleineres k: Unterschiede sichtbar
 """
 
 import argparse
@@ -28,7 +29,8 @@ import re
 from pathlib import Path
 
 from src.llm import chat
-from src.rag import ABSTENTION, answer, build_context
+from src.rag import answer
+from src.search import embedding_search
 from src.vectorstore import DEFAULT_COLLECTION, create_collection
 
 EVAL_PATH = Path("eval/rag_eval.jsonl")
@@ -60,9 +62,15 @@ def _judge_score(prompt: str) -> float:
     return max(0.0, min(1.0, value))
 
 
-def faithfulness(rag_answer: str, context: str) -> float:
-    """Anteil der Antwort-Aussagen, die durch den Kontext gestuetzt sind."""
+def faithfulness(question: str, rag_answer: str, context: str) -> float:
+    """Anteil der Antwort-Aussagen, die durch den Kontext gestuetzt sind.
+
+    ``question`` ist Teil der Signatur (wie im Lab vorgegeben), damit der Judge
+    Aussagen im Kontext der Frage bewerten kann; das Grounding-Urteil selbst
+    stuetzt sich aber vor allem auf KONTEXT vs. ANTWORT.
+    """
     return _judge_score(
+        f"FRAGE:\n{question}\n\n"
         f"KONTEXT:\n{context}\n\n"
         f"ANTWORT:\n{rag_answer}\n\n"
         "Zerlege die ANTWORT in einzelne Aussagen. Welcher Anteil davon wird "
@@ -94,7 +102,16 @@ def context_hit(expected_source: str, hits: list[dict]) -> bool:
     return any(hit["source"] == expected_source for hit in hits)
 
 
-def evaluate(retriever: str = "dense") -> list[dict]:
+def _resolve_retriever(name: str):
+    """CLI-Wahl (String) → Retriever-Funktion für answer()."""
+    if name == "hybrid":
+        from src.hybrid import hybrid_search
+
+        return hybrid_search
+    return embedding_search
+
+
+def evaluate(retriever: str = "dense", n_results: int = 5) -> list[dict]:
     """Beantwortet jede Eval-Frage und bewertet sie per LLM-as-Judge."""
     collection = create_collection(DEFAULT_COLLECTION)
     if collection.count() == 0:
@@ -103,21 +120,34 @@ def evaluate(retriever: str = "dense") -> list[dict]:
             "python -m src.ingest docs"
         )
 
+    retriever_fn = _resolve_retriever(retriever)
+
     rows = []
     for entry in load_evalset():
         question = entry["question"]
-        result = answer(question, collection=collection, retriever=retriever)
+        result = answer(
+            question,
+            n_results=n_results,
+            collection=collection,
+            retriever=retriever_fn,
+        )
         rag_answer = result["answer"]
         row = {"question": question, "type": entry.get("type", "?")}
 
         if entry.get("ground_truth", "").strip().lower() == UNANSWERABLE:
             # Unbeantwortbar: korrekt = das System hat sich enthalten.
-            row["abstained"] = is_abstention(rag_answer)
-            row["correct_abstention"] = row["abstained"]
+            # Konvention (siehe Lab): Faithfulness/Relevancy = 1.0 bei korrekter
+            # Enthaltung, 0.0 bei Halluzination — so fließen diese Fragen in
+            # dieselben Mittelwerte ein wie die beantwortbaren.
+            abstained = is_abstention(rag_answer)
+            row["abstained"] = abstained
+            row["faithfulness"] = 1.0 if abstained else 0.0
+            row["answer_relevancy"] = 1.0 if abstained else 0.0
         else:
-            context = build_context(result["hits"])
-            row["context_hit"] = context_hit(entry.get("source", ""), result["hits"])
-            row["faithfulness"] = faithfulness(rag_answer, context)
+            row["context_hit"] = context_hit(
+                entry.get("expected_source", ""), result["hits"]
+            )
+            row["faithfulness"] = faithfulness(question, rag_answer, result["context"])
             row["answer_relevancy"] = answer_relevancy(question, rag_answer)
 
         rows.append(row)
@@ -130,7 +160,7 @@ def _mean(values: list[float]) -> float:
 
 
 def _print_row(row: dict) -> None:
-    if "faithfulness" in row:
+    if "context_hit" in row:
         print(
             f"  {row['question'][:52]:52} "
             f"faith={row['faithfulness']:.2f}  "
@@ -140,20 +170,21 @@ def _print_row(row: dict) -> None:
     else:
         print(
             f"  {row['question'][:52]:52} "
-            f"Enthaltung={'✓' if row['correct_abstention'] else '✗ (halluziniert!)'}"
+            f"Enthaltung={'✓' if row['abstained'] else '✗ (halluziniert!)'}"
         )
 
 
 def print_report(rows: list[dict], retriever: str) -> None:
-    answerable = [r for r in rows if "faithfulness" in r]
-    unanswerable = [r for r in rows if "correct_abstention" in r]
+    answerable = [r for r in rows if "context_hit" in r]
+    unanswerable = [r for r in rows if "abstained" in r]
 
     config = f"retriever={retriever}"
     print("\n" + "=" * 64)
     print(f"RAG-EVALUATION ({config}) — {len(rows)} Fragen")
     print("=" * 64)
-    print(f"  Faithfulness (Ø):     {_mean([r['faithfulness'] for r in answerable]):.2f}")
-    print(f"  Answer Relevancy (Ø): {_mean([r['answer_relevancy'] for r in answerable]):.2f}")
+    # Faithfulness/Relevancy über ALLE Fragen (unbeantwortbare zählen mit 1.0/0.0).
+    print(f"  Faithfulness (Ø):     {_mean([r['faithfulness'] for r in rows]):.2f}")
+    print(f"  Answer Relevancy (Ø): {_mean([r['answer_relevancy'] for r in rows]):.2f}")
     print(
         f"  Kontext-Treffer:      "
         f"{sum(r['context_hit'] for r in answerable)}/{len(answerable)}"
@@ -161,7 +192,7 @@ def print_report(rows: list[dict], retriever: str) -> None:
     if unanswerable:
         print(
             f"  Enthaltung korrekt:   "
-            f"{sum(r['correct_abstention'] for r in unanswerable)}/{len(unanswerable)}"
+            f"{sum(r['abstained'] for r in unanswerable)}/{len(unanswerable)}"
         )
     print("=" * 64)
     print(
@@ -178,9 +209,16 @@ def main() -> None:
         default="dense",
         help="Retrieval-Verfahren (Default: dense)",
     )
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=5,
+        help="Anzahl Kontext-Chunks (Default: 5). Kleineres k (z. B. 3) macht "
+        "Retrieval-Unterschiede zwischen dense und hybrid sichtbar.",
+    )
     args = parser.parse_args()
 
-    rows = evaluate(retriever=args.retriever)
+    rows = evaluate(retriever=args.retriever, n_results=args.n)
     print_report(rows, args.retriever)
 
 
