@@ -135,7 +135,11 @@ def answer(
    Enthaltungsanweisung + Zitierformat — die drei Schlüsselelemente aus der
    Vorlesung).
 4. `answer` gibt neben der Antwort auch die verwendeten Quellen zurück, damit
-   man Zitate nachvollziehen kann.
+   man Zitate nachvollziehen kann. Konkret: `sources` ist eine Liste in
+   Trefferreihenfolge, ein Eintrag pro Chunk mit dem passenden `[Quelle N]`-Label
+   und der Herkunftsdatei, z. B.
+   `[{"label": "Quelle 1", "source": "vpn-zugang.md"}, ...]`. So kann das CLI die
+   Zitate direkt den Labels im Antworttext zuordnen.
 5. `answer` akzeptiert einen optionalen `retriever`-Parameter (Default
    `embedding_search`). So läuft dieselbe RAG-Logik in der Vertiefung einmal mit
    dichter und einmal mit **hybrider** Suche (Teil 2) — ohne den Code zu
@@ -155,7 +159,9 @@ python -m src.rag "Mein Passwort ist abgelaufen, was tun?"
 
 Ausgabe: die generierte Antwort **plus** eine Liste der zitierten Quellen.
 
-Beispiel:
+Beispiel (schematisch — die **konkrete Quellenliste hängt vom Retrieval ab** und
+kann bei euch abweichen; für diese Frage liefert die Vektorsuche auf den oberen
+Rängen mehrfach `vpn-zugang.md`):
 
 ```
 Frage: Wie lange bleibt die VPN-Verbindung bestehen?
@@ -166,7 +172,7 @@ Antwort:
 
 Quellen:
   [Quelle 1] vpn-zugang.md
-  [Quelle 2] netzwerk-und-wlan.md
+  [Quelle 2] vpn-zugang.md
 ```
 
 > **Hinweis:** Die Modellantwort kann mit Leerzeichen/Leerzeilen beginnen (Format-
@@ -387,8 +393,13 @@ def answer_relevancy(question: str, rag_answer: str) -> float:
     """
 
 
-def context_hit(expected_source: str, hits: list[dict]) -> bool:
-    """Kontextrelevanz (Retrieval): war die erwartete Quelle unter den Treffern?"""
+def context_hit(expected_source: str | None, hits: list[dict]) -> bool:
+    """Kontextrelevanz (Retrieval): war die erwartete Quelle unter den Treffern?
+
+    `expected_source` ist `None` bei **unbeantwortbaren** Fragen (keine erwartete
+    Quelle) — dann ist die Prüfung nicht anwendbar; behandelt diesen Fall bewusst
+    (z. B. als „trifft zu", da es keine zu treffende Quelle gibt).
+    """
 ```
 
 **Anforderungen:**
@@ -406,11 +417,14 @@ def context_hit(expected_source: str, hits: list[dict]) -> bool:
 
 Lasst die Evaluation über **beide Retriever-Konfigurationen** laufen (dense vs.
 hybrid — genau die zwei, die ihr im Pflichtteil gebaut habt) und tragt die
-Zahlen ein:
+Zahlen ein. **Wichtig: mit `--n 3`** — bei kleinem Korpus und starkem Embedder
+findet schon dense im Top-5-Fenster fast alles, sodass die Tabelle bei `--n 5`
+für beide ≈ 1.0 zeigt und **keinen Unterschied sichtbar macht**. Erst das kleine
+Kontextfenster lässt Retrieval-Qualität ins Gewicht fallen:
 
 ```bash
-python -m src.rag_eval --retriever dense
-python -m src.rag_eval --retriever hybrid
+python -m src.rag_eval --retriever dense  --n 3
+python -m src.rag_eval --retriever hybrid --n 3
 ```
 
 | Konfiguration | Faithfulness | Answer Relevancy | Kontext-Treffer |
@@ -418,23 +432,15 @@ python -m src.rag_eval --retriever hybrid
 | Dense (VL 4)  |              |                  |                 |
 | Hybrid        |              |                  |                 |
 
-> **Wenn beide Konfigurationen identische Werte liefern:** Bei kleinem Korpus und
-> starkem Embedder findet schon dense fast alles im Top-5-Fenster — der
-> Kontext-Treffer ist dann für beide ≈ 1.0 und die Tabelle zeigt keinen
-> Unterschied. Verkleinert das Kontextfenster, damit Retrieval-Qualität überhaupt
-> ins Gewicht fällt:
->
-> ```bash
-> python -m src.rag_eval --retriever dense  --n 3
-> python -m src.rag_eval --retriever hybrid --n 3
-> ```
->
-> Erst bei kleinem k zeigt sich der Effekt: Im Beispiel-Evalset verfehlt dense bei
-> Top-3 die Stelle zu „Bernd Hagedorn / `-4200`", hybrid nicht — Kontext-Treffer
-> **dense ≈ 0.93 vs. hybrid 1.0** (Faithfulness/Relevancy bleiben bei diesem
-> starken Modell in beiden Fällen ≈ 1.0). Deshalb sind **keyword-lastige Fragen**
+> **Warum das kleine k entscheidend ist:** Erst bei Top-3 zeigt sich der Effekt.
+> Im Beispiel-Evalset verfehlt dense die Stelle zu „Bernd Hagedorn / `-4200`",
+> hybrid nicht — Kontext-Treffer **dense ≈ 0.9 vs. hybrid 1.0** (Faithfulness/
+> Relevancy bleiben bei diesem starken Modell in beiden Fällen ≈ 1.0; der eine
+> dense-Miss drückt zusätzlich die Answer Relevancy, weil ohne den `-4200`-Chunk
+> keine relevante Antwort entstehen kann). Deshalb sind **keyword-lastige Fragen**
 > im Evalset entscheidend — ohne sie belegt die Tabelle den Nutzen der hybriden
-> Suche nicht.
+> Suche nicht. Mit `--n 5` liefern beide Konfigurationen erwartungsgemäß
+> identische ≈ 1.0-Werte.
 
 **Richtwerte zur Kalibrierung** (aus der Vorlesung — keine absoluten Standards):
 Faithfulness > 0.8 stark, < 0.5 bedenklich; Answer Relevancy > 0.8 stark,
