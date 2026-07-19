@@ -1,11 +1,13 @@
-{"question": "Wie lautet die interne IT-Hotline?", "ground_truth": "Die interne Hotline ist -4242.", "source": "it-support-prozesse.md", "type": "einfach"}
-{"question": "Nach welcher Zeit der Inaktivitaet trennt das VPN automatisch?", "ground_truth": "Nach 30 Minuten Inaktivitaet (spaetestens nach 12 Stunden).", "source": "vpn-zugang.md", "type": "einfach"}
-{"question": "Wie lange bleiben Druckjobs in der Follow-Me-Warteliste?", "ground_truth": "Bis zu 24 Stunden.", "source": "drucker.md", "type": "einfach"}
-{"question": "Wie viele Zeichen muss ein Passwort mindestens haben?", "ground_truth": "Mindestens 14 Zeichen.", "source": "passwort-und-konto.md", "type": "einfach"}
-{"question": "Nach wie vielen Fehlversuchen wird das Konto gesperrt und fuer wie lange?", "ground_truth": "Nach 5 fehlgeschlagenen Anmeldeversuchen fuer 30 Minuten.", "source": "passwort-und-konto.md", "type": "einfach"}
-{"question": "Welcher Drucker kann A3 drucken?", "ground_truth": "Nur LT-PRN-02 im 2. OG.", "source": "drucker.md", "type": "einfach"}
-{"question": "Wie hoch ist die SLA-Reaktionszeit fuer Prioritaet hoch?", "ground_truth": "2 Stunden.", "source": "it-support-prozesse.md", "type": "einfach"}
-{"question": "Welche Voraussetzungen brauche ich, um das VPN einzurichten?", "ground_truth": "Verwaltetes Firmengeraet, Cisco Secure Client ab Version 5.1, eingerichtete MFA und ein Internetanschluss ab 16 Mbit/s.", "source": "vpn-zugang.md", "type": "schwer"}
-{"question": "Ich habe mein Passwort vergessen und keine MFA registriert. Was kann ich tun?", "ground_truth": "Der Self-Service braucht registrierte MFA. Ohne MFA hilft nur der Service Desk (Hotline -4242) mit Identitaetspruefung per Videocall oder am IT-Service-Point in Raum 1.08.", "source": "passwort-und-konto.md", "type": "schwer"}
-{"question": "Wie viele Urlaubstage habe ich pro Jahr?", "ground_truth": "nicht in der Wissensbasis", "type": "unbeantwortbar"}
-{"question": "Was kostet das Mittagessen in der Kantine?", "ground_truth": "nicht in der Wissensbasis", "type": "unbeantwortbar"}
+{"question": "Wie lautet die interne IT-Hotline?", "ground_truth": "Die interne Hotline ist -4242.", "expected_source": "it-support-prozesse.md", "type": "einfach"}
+{"question": "Nach welcher Zeit der Inaktivitaet trennt das VPN automatisch?", "ground_truth": "Nach 30 Minuten Inaktivitaet (spaetestens nach 12 Stunden).", "expected_source": "vpn-zugang.md", "type": "einfach"}
+{"question": "Wie viele Zeichen muss ein Passwort mindestens haben?", "ground_truth": "Mindestens 14 Zeichen.", "expected_source": "passwort-und-konto.md", "type": "einfach"}
+{"question": "Nach wie vielen Fehlversuchen wird das Konto gesperrt und fuer wie lange?", "ground_truth": "Nach 5 fehlgeschlagenen Anmeldeversuchen fuer 30 Minuten.", "expected_source": "passwort-und-konto.md", "type": "einfach"}
+{"question": "Welcher Drucker kann A3 drucken?", "ground_truth": "Nur LT-PRN-02 im 2. OG.", "expected_source": "drucker.md", "type": "einfach"}
+{"question": "Wie hoch ist die SLA-Reaktionszeit fuer Prioritaet hoch?", "ground_truth": "2 Stunden.", "expected_source": "it-support-prozesse.md", "type": "einfach"}
+{"question": "Welche Voraussetzungen brauche ich, um das VPN einzurichten?", "ground_truth": "Verwaltetes Firmengeraet, Cisco Secure Client ab Version 5.1, eingerichtete MFA und ein Internetanschluss ab 16 Mbit/s.", "expected_source": "vpn-zugang.md", "type": "schwer"}
+{"question": "Ich habe mein Passwort vergessen und keine MFA registriert. Was kann ich tun?", "ground_truth": "Der Self-Service braucht registrierte MFA. Ohne MFA hilft nur der Service Desk (Hotline -4242) mit Identitaetspruefung oder am IT-Service-Point in Raum 1.08.", "expected_source": "passwort-und-konto.md", "type": "schwer"}
+{"question": "Welche Durchwahl hat Bernd Hagedorn?", "ground_truth": "-4200", "expected_source": "it-support-prozesse.md", "type": "keyword"}
+{"question": "Welcher Passwort-Manager ist bei LeineTech empfohlen?", "ground_truth": "Bitwarden", "expected_source": "passwort-und-konto.md", "type": "keyword"}
+{"question": "Welcher IP-Bereich laeuft durch den VPN-Tunnel?", "ground_truth": "10.20.0.0/16", "expected_source": "vpn-zugang.md", "type": "keyword"}
+{"question": "Wie viele Urlaubstage habe ich pro Jahr?", "ground_truth": "nicht in der Wissensbasis", "expected_source": null, "type": "unbeantwortbar"}
+{"question": "Was kostet das Mittagessen in der Kantine?", "ground_truth": "nicht in der Wissensbasis", "expected_source": null, "type": "unbeantwortbar"}

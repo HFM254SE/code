@@ -60,10 +60,10 @@ def build_context(hits: list[dict]) -> str:
     return "\n\n".join(blocks)
 
 
-def build_prompt(query: str, hits: list[dict]) -> str:
+def build_prompt(query: str, context: str) -> str:
     """Baut den User-Prompt: erst der Kontextblock, dann die Frage."""
     return (
-        f"KONTEXT:\n{build_context(hits)}\n\n"
+        f"KONTEXT:\n{context}\n\n"
         f"FRAGE: {query}\n\n"
         "ANTWORT (nur aus dem Kontext, mit [Quelle N]):"
     )
@@ -73,31 +73,37 @@ def answer(
     query: str,
     n_results: int = 5,
     collection=None,
-    retriever: str = "dense",
+    retriever=embedding_search,
 ) -> dict:
     """Beantwortet eine Frage per RAG.
 
-    Ablauf: retrieve (dense: ``embedding_search``, hybrid: ``hybrid_search``) →
-    augment (``build_context`` + Prompt) → generate (``chat``). Gibt
-    ``{"answer", "sources", "hits"}`` zurück — Antwort UND Belege, damit Zitate
-    nachvollziehbar sind und die Evaluation auf den Kontext zugreifen kann.
+    Ablauf: retrieve (``retriever``) → augment (``build_context`` + Prompt) →
+    generate (``chat``). ``retriever`` ist standardmäßig die dichte Vektorsuche
+    (``embedding_search``), lässt sich aber gegen ``hybrid_search`` (Teil 2)
+    tauschen — beide liefern dasselbe Trefferformat
+    (``answer(..., retriever=hybrid_search)``).
+
+    Gibt ``{"answer", "sources", "hits", "context"}`` zurück — Antwort, Belege UND
+    den zusammengebauten Kontext-String, damit Zitate nachvollziehbar sind und die
+    Evaluation (LLM-as-Judge ``faithfulness``) direkt auf den Kontext zugreifen kann.
     """
     if collection is None:
         collection = create_collection(DEFAULT_COLLECTION)
 
-    if retriever == "hybrid":
-        from src.hybrid import hybrid_search
-
-        hits = hybrid_search(collection, query, n_results=n_results)
-    else:
-        hits = embedding_search(collection, query, n_results=n_results)
+    hits = retriever(collection, query, n_results=n_results)
 
     if not hits:
-        return {"answer": ABSTENTION, "sources": [], "hits": []}
+        return {"answer": ABSTENTION, "sources": [], "hits": [], "context": ""}
 
-    response = chat(build_prompt(query, hits), system=RAG_SYSTEM_PROMPT)
+    context = build_context(hits)
+    response = chat(build_prompt(query, context), system=RAG_SYSTEM_PROMPT)
     sources = [{"rank": hit["rank"], "source": hit["source"]} for hit in hits]
-    return {"answer": response.strip(), "sources": sources, "hits": hits}
+    return {
+        "answer": response.strip(),
+        "sources": sources,
+        "hits": hits,
+        "context": context,
+    }
 
 
 def _print_answer(query: str, result: dict) -> None:
@@ -133,11 +139,16 @@ def main() -> None:
             "python -m src.ingest docs"
         )
 
+    # CLI-Wahl (String) → Retriever-Funktion für answer().
+    from src.hybrid import hybrid_search
+
+    retrievers = {"dense": embedding_search, "hybrid": hybrid_search}
+
     result = answer(
         args.query,
         n_results=args.n,
         collection=collection,
-        retriever=args.retriever,
+        retriever=retrievers[args.retriever],
     )
     _print_answer(args.query, result)
 

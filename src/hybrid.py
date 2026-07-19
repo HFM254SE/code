@@ -12,7 +12,7 @@ RRF kombiniert Ranglisten, ohne unterschiedliche Score-Skalen (Kosinus-
 natürlich nach oben.
 
 Aufruf:
-    python -m src.hybrid "Welches Gateway trage ich für Cisco Secure Client ein?"
+    python -m src.hybrid "Welche Durchwahl hat Bernd Hagedorn?"
 """
 
 import argparse
