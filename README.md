@@ -1,62 +1,90 @@
-# FHDW — Code zur Vorlesung Automatisierung im Software Engineering (Q3 2026) 
+# LeineTech Ticket-Triage — `vl05-rag-advanced-solution`
 
-Hands-on **Lab-Code**
+**Musterlösung** nach dem Lab in **VL 5 (Advanced RAG)**. Aus der Such-Pipeline
+von VL 4 wird ein **vollständiger RAG-Chatbot**: Retrieve → **Augment →
+Generate** — und mit **hybrider Suche** besser rankendes Retrieval.
 
-## Das Kursprojekt: LeineTech Ticket-Triage („roter Faden")
+Neu gegenüber `vl05-rag-advanced-start` (im Lab gebaut):
 
-Über alle Vorlesungen hinweg wird am gleichen System gearbeitet: dem
-internen **Support-Ticket-System der LeineTech GmbH** (fiktiver IT-Dienstleister,
-Hannover, ~200 Mitarbeitende).
+- `src/rag.py` — der **RAG-Client**: Kontextblock mit Quellen-Labels bauen
+  (Augment), geerdeter Prompt (Grounding + Zitierpflicht + Enthaltung) an das
+  LLM (Generate). Retriever umschaltbar: `--retriever dense|hybrid`.
+- `src/hybrid.py` — **hybride Suche**: dichte Vektorsuche + Keyword-Suche,
+  selbst fusioniert per **Reciprocal Rank Fusion** (RRF).
+- `src/rag_eval.py` — **Evaluation per LLM-as-Judge** (die RAG-Triade:
+  Kontext-Treffer, Faithfulness, Answer Relevancy); vergleicht dense vs. hybrid.
+  *(Vertiefung — im Lab optional.)*
+- `eval/rag_eval.jsonl` — kleines Evalset (einfach / schwer / unbeantwortbar).
 
-| VL | Erweiterung | Schwerpunkt |
-|----|-------------|-------------|
-| 1 | Bestehendes Triage-Tool verbessern | pylint, flake8, Trivy, VS Code + Continue.dev (HomeCloud) |
-| 2 | Tickets per Prompt klassifizieren (Browser, ohne Code) | Zero-/Few-Shot, CoT |
-| 3 | LLM-Anschluss über den Kurs-Endpunkt + Evaluierung | HomeCloud (litellm), Golden Dataset |
-| 4–5 | RAG-Chatbot über die LeineTech-Knowledge-Base (`docs/`) | ChromaDB, Embeddings (Sven, in Arbeit) |
-| 6 | Das eigene System angreifen und absichern | Prompt Injection, Guardrails |
-| 7–8 | Triage zum Tool-nutzenden Agenten ausbauen | LangGraph, MCP |
-| 9 | Spec-Driven Development am Projekt | OpenAPI, CLAUDE.md |
-| 10 | Fallstudie: Einordnung nach EU AI Act | — |
+Alles läuft — wie Chat/Embeddings seit VL 3/4 — über den **Kurs-Endpunkt
+(HomeCloud)**. Es braucht `LLM_BASE_URL` / `LLM_API_KEY` in der Umgebung
+(siehe SETUP.md); der Endpunkt ist nur montags verfügbar und hat Cold Starts.
 
+## Voraussetzung: Index füllen
 
-## Checkpoint-Branches
-
-Jeder Lab-Zustand ist ein Branch — wer hängen bleibt oder eine Session
-verpasst, steigt einfach wieder ein:
-
-```
-git checkout vl01-start                           # VL 1: das "schlechte" Tool (Lab-Start)
-git checkout vl01-solution                        # VL 1: Musterlösung = Start für VL 3
-git checkout vl03-llm-client                      # VL 3: LLM-Anschluss über den Kurs-Endpunkt fertig
-git checkout vl03-evaluation                      # VL 3: Evaluierung Regeln vs. LLM fertig
-git checkout vl04-rag-ingestion-pipeline-start    # VL 4: Startpunkt für das RAG Ingestion Pipeline Lab
-git checkout vl04-rag-ingestion-pipeline-solution # VL 4: Musterlösung für VL 4
-git checkout vl05-rag-advanced-start              # VL 5: Startpunkt für die RAG Advanced Lab
-git checkout vl05-rag-advanced-solution           # VL 5: Musterlösung für VL 5
-git checkout vl06-guardrails                      # VL 6: Injection-Scanner + Output-Filter
-git checkout vl08-agent                           # VL 8: Tool-nutzender LangGraph-Agent
-git checkout vl09-spec                            # VL 9: OpenAPI-Spec + Drift-Prüfung
+```bash
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"
+export LLM_API_KEY="<euer-key>"      # siehe SETUP.md
+python -m src.ingest docs            # Wissensbasis nach ./chroma_db indexieren
 ```
 
-Jeder Branch ist **vollständig** (Code + Daten + Docs + Lab-Anleitung in
-`labs/`) und die Anleitungen funktionieren auch ohne Vorlesung zum Nacharbeiten.
-(VL 2, 7, 10 haben keinen eigenen Code-Branch: VL 2 ist browserbasiert,
-VL 7 und 10 sind Theorie/Fallstudie. **VL 4/5 (RAG, Sven):** Der Lab-Code
-liegt in den Branches `vl04-rag-ingestion-pipeline-start` (Lab-Start) und
-`vl04-rag-ingestion-pipeline-solution` (Musterlösung = Start für VL 5) und
-baut auf `vl03-evaluation` auf; die Anleitung steht in `labs/vl04-lab.md`.
-Die Folien liegen im separaten `slides`-Repo.)
+## Fragen beantworten (RAG)
 
-## Inhalt eines Checkpoints
-
-```
-data/tickets.json    30 Support-Tickets der LeineTech GmbH (Mai 2026)
-docs/                Knowledge-Base der LeineTech-IT (8 Artikel) → RAG-Korpus ab VL 4
-eval/golden.jsonl    Menschliche Soll-Labels für alle 30 Tickets
-src/                 Das Triage-Tool im jeweiligen Ausbauzustand
-tests/               pytest — Sicherheitsnetz bei (KI-)Refactorings
-labs/                Schritt-für-Schritt-Lab-Anleitungen
-SETUP.md             Kurs-LLM-Endpunkt (Nirk HomeCloud) + Groq-Fallback einrichten
+```bash
+python -m src.rag "Wie lange bleibt die VPN-Verbindung bestehen?"
+python -m src.rag "Nenne alle Voraussetzungen fürs VPN." --retriever hybrid
+python -m src.rag "Welches Gateway trage ich für Cisco Secure Client ein?" --retriever hybrid
+python -m src.rag "Wie viele Urlaubstage habe ich?"   # → Enthaltung (nicht im Korpus)
 ```
 
+Ausgabe: die generierte Antwort **plus** die zitierten Quellen. Die
+Enthaltungsanweisung sorgt dafür, dass unbeantwortbare Fragen ein ehrliches
+„Ich habe dazu keine Information in der Wissensbasis" bekommen statt einer
+selbstbewussten Halluzination.
+
+## Hybride Suche direkt
+
+```bash
+python -m src.hybrid "Welches Gateway trage ich für Cisco Secure Client ein?"
+```
+
+Dense allein ist „keyword-blind" (verfehlt exakte Codes/Namen wie
+`vpn.leinetech.de` oder `LT-PRN-02`), Keyword allein kennt keine Synonyme. RRF
+kombiniert beide Ranglisten **ohne Score-Normalisierung** — es zählt nur die
+Ränge; was in beiden Listen auftaucht, steigt nach oben.
+
+## Evaluieren (LLM-as-Judge) — Vertiefung
+
+```bash
+python -m src.rag_eval                              # Baseline: dense
+python -m src.rag_eval --retriever hybrid
+```
+
+Misst die **RAG-Triade** und gibt Durchschnitte aus. Das ist das Verfahren
+hinter RAGAS (**LLM-as-Judge**) — die Zahlen sind **Richtungssignale zum
+Vergleich von Konfigurationen**, keine absolute Wahrheit (Positions-,
+Ausführlichkeits-, Selbstverstärkungsbias). Richtwerte: Faithfulness > 0.8
+stark / < 0.5 bedenklich, Answer Relevancy > 0.8 stark / < 0.6 bedenklich.
+
+Im Lab ist die Evaluation als **Vertiefung** ausgewiesen (freiwillig) — die
+Musterlösung liefert sie fertig mit.
+
+> **Optional — „echtes" RAGAS:** In Produktion nimmt man das Standard-Framework
+> `ragas` (`from ragas import evaluate`, Metriken `faithfulness`,
+> `answer_relevancy`, `context_precision`). ⚠️ Neue Abhängigkeit → gemäß
+> Kurspolitik selbst installieren, und **die Version pinnen** (die API ändert
+> sich zwischen Releases). Bewusst *nicht* in `requirements.txt`, damit der
+> Pflichtteil abhängigkeitsfrei bleibt.
+
+## Tests
+
+```bash
+pytest                      # Loader/Chunker + RRF-Fusion (offline, kein Netz)
+```
+
+`tests/test_hybrid.py` sichert die Reciprocal Rank Fusion ab (reine
+Rang-Arithmetik). Die netzabhängigen Teile (RAG-Generierung, hybride Suche,
+Evaluation) werden im Lab manuell geprüft (siehe `labs/vl05-lab.md`).
+
+> Hier endet der VL-5-Stand: aus der Ingestion-Pipeline von VL 4 ist ein
+> evaluierter, produktionsnaher RAG-Client geworden.
