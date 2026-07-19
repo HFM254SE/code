@@ -31,7 +31,9 @@ git checkout vl01-solution                        # VL 1: Musterlösung = Start 
 git checkout vl03-llm-client                      # VL 3: LLM-Anschluss über den Kurs-Endpunkt fertig
 git checkout vl03-evaluation                      # VL 3: Evaluierung Regeln vs. LLM fertig
 git checkout vl04-rag-ingestion-pipeline-start    # VL 4: Startpunkt für das RAG Ingestion Pipeline Lab
-git checkout vl04-rag-ingestion-pipeline-solution # VL 5: Musterlösung und Start für VL 5
+git checkout vl04-rag-ingestion-pipeline-solution # VL 4: Musterlösung für VL 4
+git checkout vl05-rag-advanced-start              # VL 5: Startpunkt für die RAG Advanced Lab
+git checkout vl05-rag-advanced-solution           # VL 5: Musterlösung für VL 5
 git checkout vl06-guardrails                      # VL 6: Injection-Scanner + Output-Filter
 git checkout vl08-agent                           # VL 8: Tool-nutzender LangGraph-Agent
 git checkout vl09-spec                            # VL 9: OpenAPI-Spec + Drift-Prüfung

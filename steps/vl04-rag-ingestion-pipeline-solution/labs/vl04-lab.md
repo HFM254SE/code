@@ -13,7 +13,7 @@ für den RAG-Chatbot in VL 5.
 
 ```bash
 cd leinetech
-git checkout vl03-evaluation        # wir bauen auf dem VL-3-Stand auf
+git checkout vl04-rag-ingestion-pipeline-start 
 ```
 
 1) Virtuelle Umgebung aktivieren und Abhängigkeiten installieren:
@@ -41,18 +41,17 @@ python -c "import chromadb; print('ChromaDB', chromadb.__version__)"
 ```
 
 4) Prüfen, ob die Verbindung zum Kurs-Endpunkt funktioniert (wir nutzen ihn
-   sowohl fürs Chatten als auch fürs **Embedding**):
+   später sowohl fürs Chatten als auch fürs **Embedding**):
 
 ```bash
 python -c "from src.llm import chat; response = chat(\"Hey 👋\"); print(response)"
-python -c "from src.embedder import embed_text; print('Embedding-Dim:', len(embed_text('Testsatz')))"
 ```
 
-> **Hinweis:** Das Embedding läuft über das Modell `qwen3-embed-4b` am
-> Kurs-Endpunkt (HomeCloud) — dieselbe Anbindung wie der Chat. Es braucht also
-> die oben gesetzten `LLM_BASE_URL` / `LLM_API_KEY` (siehe SETUP.md), der Endpunkt
-> ist nur **montags** verfügbar und die erste Anfrage kann durch den Cold Start
-> 200–300 s dauern. Erwartete Embedding-Dimension: **2560**.
+> **Hinweis:** Der Kurs-Endpunkt (HomeCloud) braucht die oben gesetzten
+> `LLM_BASE_URL` / `LLM_API_KEY` (siehe SETUP.md), ist nur **montags** verfügbar
+> und die erste Anfrage kann durch den Cold Start 200–300 s dauern. Über
+> dieselbe Anbindung läuft später auch das Embedding-Modell `qwen3-embed-4b` —
+> den dazugehörigen Code (`src/embedder.py`) baut ihr in Teil 2.
 
 Die Wissensbasis liegt in `docs/` — 8 Markdown-Dateien mit
 IT-Dokumentation (VPN, Drucker, Passwörter, E-Mail, …). Schaut euch 2–3

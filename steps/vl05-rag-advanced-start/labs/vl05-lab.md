@@ -25,7 +25,7 @@ Begriffen scheitert.
 
 ```bash
 cd leinetech
-git checkout vl04-rag-ingestion-pipeline-solution   # Start = VL-4-Musterlösung
+git checkout vl05-rag-advanced-start   # Start = VL-4-Musterlösung
 ```
 
 1. Umgebung aktivieren und Abhängigkeiten installieren:
@@ -376,7 +376,7 @@ Wahrheit. Für Hochrisiko bleibt menschliche Evaluation der Goldstandard.
 
 | Problem                                      | Lösung                                                                                                          |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `ImportError: embedding_search`              | Ihr seid nicht auf dem VL-4-Solution-Stand — `git checkout vl04-rag-ingestion-pipeline-solution`                |
+| `ImportError: embedding_search`              | Ihr seid nicht auf dem VL-4-Solution-Stand — `vl05-rag-advanced-start`                |
 | Collection ist leer                          | Erst indexieren: `python -m src.ingest docs`                                                                    |
 | Erste Anfrage hängt minutenlang              | Cold Start am Kurs-Endpunkt (200–300 s) — warten, nicht abbrechen (s. SETUP.md)                                 |
 | 403 / „nur montags …"                        | Endpunkt außerhalb des Zeitfensters oder `LLM_API_KEY`/`LLM_BASE_URL` fehlen — s. SETUP.md                      |
