@@ -107,12 +107,20 @@ def build_context(hits: list[dict]) -> str:
     """
 
 
-def answer(query: str, n_results: int = 5, collection=None) -> dict:
+def answer(
+    query: str,
+    n_results: int = 5,
+    collection=None,
+    retriever=embedding_search,
+) -> dict:
     """Beantwortet eine Frage per RAG.
 
-    Ablauf: retrieve (embedding_search) → augment (build_context + Prompt)
-    → generate (chat). Gibt {"answer": ..., "sources": [...], "hits": [...]}
-    zurück, damit man Antwort UND Belege sieht.
+    Ablauf: retrieve (retriever) → augment (build_context + Prompt) → generate
+    (chat). `retriever` ist standardmäßig die dichte Vektorsuche
+    (embedding_search), lässt sich aber gegen `hybrid_search` (Teil 2) tauschen —
+    beide liefern dasselbe Trefferformat. Gibt
+    {"answer": ..., "sources": [...], "hits": [...], "context": ...} zurück, damit
+    man Antwort, Belege UND den (für die Vertiefung nötigen) Kontext sieht.
     """
 ```
 
@@ -128,6 +136,13 @@ def answer(query: str, n_results: int = 5, collection=None) -> dict:
    Vorlesung).
 4. `answer` gibt neben der Antwort auch die verwendeten Quellen zurück, damit
    man Zitate nachvollziehen kann.
+5. `answer` akzeptiert einen optionalen `retriever`-Parameter (Default
+   `embedding_search`). So läuft dieselbe RAG-Logik in der Vertiefung einmal mit
+   dichter und einmal mit **hybrider** Suche (Teil 2) — ohne den Code zu
+   duplizieren (`answer(..., retriever=hybrid_search)`).
+6. `answer` gibt zusätzlich den zusammengebauten `context`-String zurück. Die
+   Vertiefung (LLM-as-Judge `faithfulness`) braucht ihn, um die Antwort gegen den
+   **tatsächlich genutzten** Kontext zu prüfen.
 
 ### Aufgabe B — Das CLI
 
@@ -154,6 +169,10 @@ Quellen:
   [Quelle 2] netzwerk-und-wlan.md
 ```
 
+> **Hinweis:** Die Modellantwort kann mit Leerzeichen/Leerzeilen beginnen (Format-
+> oder Reasoning-Artefakt einiger Modelle). Für eine saubere CLI-Ausgabe die
+> Antwort vor dem Drucken mit `.strip()` bereinigen.
+
 ### Aufgabe C — Enthaltung testen (der wichtigste Test)
 
 Stellt eine Frage, deren Antwort **nicht** in der Wissensbasis steht:
@@ -173,6 +192,16 @@ Frage erneut.
 Antwort überzeugend? Warum ist das für einen IT-Support-Bot gefährlich? (→ Folie
 „Warum die Enthaltungsanweisung wichtig ist".)
 
+> **Hinweis (modellabhängig):** Starke, aktuelle Modelle erfinden oft *keine*
+> überzeugende Falschantwort, sondern weisen von sich aus auf die fehlende
+> Information hin oder verweisen an die Personalabteilung — der Halluzinations-
+> effekt fällt dann schwächer aus als in der Vorlesung gezeigt. Das ändert nichts
+> an der Kernaussage: Ohne explizite Enthaltungsanweisung ist das Verhalten
+> **nicht garantiert** — und genau diese Garantie braucht ein IT-Support-Bot. Wer
+> den Effekt deutlicher sehen will, formuliert eine Frage, die eine plausible,
+> aber falsche Antwort nahelegt (z. B. nach einer konkreten Zahl/Frist, die es im
+> Korpus nicht gibt).
+
 ---
 
 ## Teil 2 — Besseres Retrieval: Hybride Suche mit RRF _(Pflicht, ~30 min)_
@@ -185,12 +214,22 @@ Zeichenketten.
 Probiert eine solche Frage:
 
 ```bash
-python -m src.search "Welches Gateway trage ich für Cisco Secure Client ein?"
+python -m src.search "Welche Durchwahl hat Bernd Hagedorn?"
 ```
 
-Der exakte String `vpn.leinetech.de` steht in `vpn-zugang.md` — landet er ganz
-oben? Oft nicht. Genau dafür gibt es **hybride Suche**: dichte Vektorsuche UND
-Keyword-Suche parallel, dann die Ranglisten fusionieren.
+Der exakte String `-4200` (Durchwahl von Bernd Hagedorn) steht in
+`it-support-prozesse.md`. Landet die passende Stelle ganz oben? Oft nicht — die
+Frage ähnelt semantisch vielen anderen Kontakt-/Hotline-Textstellen, und der
+exakte Code selbst trägt fürs Embedding kaum Bedeutung. Genau dafür gibt es
+**hybride Suche**: dichte Vektorsuche UND Keyword-Suche parallel, dann die
+Ranglisten fusionieren.
+
+> **Wichtig — modellabhängig:** Wie stark der Effekt ausfällt, hängt vom
+> Embedding-Modell ab. Das hier genutzte `qwen3-embed-4b` ist stark genug, dass es
+> viele exakte Begriffe (z. B. `vpn.leinetech.de`, `-4242`) **trotzdem** auf Rang 1
+> findet. Der Vorteil der hybriden Suche zeigt sich dann vor allem bei kleinem k
+> (Top-3) und bei selteneren Begriffen. Bei schwächeren Embeddern greift er
+> deutlicher.
 
 ### Reciprocal Rank Fusion (RRF)
 
@@ -234,6 +273,12 @@ def hybrid_search(collection, query: str, n_results: int = 5) -> list[dict]:
    zurück — **gleiches Format** wie `embedding_search`, damit `src/rag.py` es
    ohne Änderung nutzen kann.
 
+> **Hinweis:** `keyword_search` liefert nur Chunks **mit Wortüberlappung** — die
+> beiden Kandidatenlisten können also unterschiedlich lang sein (auch mal < k·4
+> oder leer). Für RRF ist das unkritisch: Ein Chunk, der nur in einer Liste
+> steht, bekommt eben nur deren Beitrag; ein Rang, den es in einer Liste nicht
+> gibt, trägt 0 bei.
+
 Testet die Fusion gegen die reine Vektorsuche:
 
 ```bash
@@ -242,7 +287,7 @@ from src.vectorstore import create_collection
 from src.search import embedding_search
 from src.hybrid import hybrid_search
 col = create_collection()
-q = 'Welches Gateway trage ich für Cisco Secure Client ein?'
+q = 'Welche Durchwahl hat Bernd Hagedorn?'
 print('--- dense ---')
 for h in embedding_search(col, q, 3): print(h['rank'], h['source'])
 print('--- hybrid ---')
@@ -250,9 +295,14 @@ for h in hybrid_search(col, q, 3): print(h['rank'], h['source'])
 "
 ```
 
+Achtet darauf, auf welchem **Rang** die Stelle mit `-4200` (`it-support-prozesse.md`)
+landet — bei dense oft außerhalb der Top-3, bei hybrid ganz oben.
+
 **Diskutiert:** Bei welchen Fragen gewinnt hybrid, bei welchen macht es keinen
-Unterschied? (Tipp: exakte Codes/Namen wie `vpn.leinetech.de`, Hotline `-4242`,
-`Secure Client 5.1` vs. umschreibende Fragen wie „VPN geht nicht".)
+Unterschied? (Beispiele, bei denen dense die exakte Stelle verfehlt und hybrid
+sie nach oben zieht: `-4200` (Bernd Hagedorn), `Bitwarden`. Beispiele, bei denen
+schon dense reicht: `vpn.leinetech.de`, Hotline `-4242`, `Secure Client 5.1`.
+Umschreibende Fragen wie „VPN geht nicht" profitieren gar nicht.)
 
 ---
 
@@ -284,20 +334,30 @@ das auch RAGAS nutzt).
 
 ### Ein kleines Evaluationsset
 
-Erstellt `eval/rag_eval.jsonl` mit ~8–10 Frage-Antwort-Paaren aus dem Korpus.
-Drei Sorten Fragen (wie in der Vorlesung):
+Erstellt `eval/rag_eval.jsonl` mit ~8–10 Frage-Antwort-Paaren aus dem Korpus
+(nicht zu verwechseln mit dem bereits vorhandenen `eval/golden.jsonl` aus der
+Ticket-Triage). Vier Sorten Fragen:
 
 - **Einfach** — Antwort steht in einem Chunk (z. B. „Wie lautet die interne
   IT-Hotline?" → `-4242`)
 - **Schwer** — Antwort erstreckt sich über mehrere Chunks (z. B. „Welche
   Voraussetzungen brauche ich fürs VPN?")
+- **Keyword-lastig** — Antwort hängt an einem exakten Code/Namen, den die
+  Vektorsuche leicht verfehlt (z. B. „Welche Durchwahl hat Bernd Hagedorn?" →
+  `-4200`). **Wichtig:** genau diese Sorte macht später den Unterschied zwischen
+  dense und hybrid sichtbar — nehmt mehrere davon auf.
 - **Unbeantwortbar** — Antwort steht **nicht** im Korpus (testet Abstinenz;
   `ground_truth` = „nicht in der Wissensbasis")
 
+Jede Zeile trägt zusätzlich `expected_source` (die Datei, in der die Antwort
+steht — für `context_hit`; bei unbeantwortbaren Fragen `null`) und `type`
+(steuert die Auswertung, z. B. Abstinenz-Prüfung bei `unbeantwortbar`):
+
 ```jsonl
-{"question": "Wie lautet die interne IT-Hotline?", "ground_truth": "-4242"}
-{"question": "Nach welcher Zeit trennt das VPN bei Inaktivität?", "ground_truth": "nach 30 Minuten"}
-{"question": "Wie viele Urlaubstage habe ich?", "ground_truth": "nicht in der Wissensbasis"}
+{"question": "Wie lautet die interne IT-Hotline?", "ground_truth": "-4242", "expected_source": "it-support-prozesse.md", "type": "einfach"}
+{"question": "Welche Voraussetzungen brauche ich fürs VPN?", "ground_truth": "verwaltetes Gerät, Secure Client ab 5.1, MFA, 16 Mbit/s", "expected_source": "vpn-zugang.md", "type": "schwer"}
+{"question": "Welche Durchwahl hat Bernd Hagedorn?", "ground_truth": "-4200", "expected_source": "it-support-prozesse.md", "type": "keyword"}
+{"question": "Wie viele Urlaubstage habe ich?", "ground_truth": "nicht in der Wissensbasis", "expected_source": null, "type": "unbeantwortbar"}
 ```
 
 ### LLM-as-Judge
@@ -336,7 +396,10 @@ def context_hit(expected_source: str, hits: list[dict]) -> bool:
 1. Den Judge mit `temperature=0.0` aufrufen (reproduzierbar) und nur eine Zahl
    parsen — robust gegen „Die Antwort ist 0.8".
 2. Für **unbeantwortbare** Fragen zählt als korrekt, wenn das System sich
-   enthält (Abstinenz-Antwort). Prüft das gesondert.
+   enthält (Abstinenz-Antwort). Prüft das gesondert — und **legt bewusst fest**,
+   wie ihr Faithfulness/Answer-Relevancy in diesem Fall wertet (naheliegend: bei
+   korrekter Enthaltung 1.0, bei Halluzination 0.0). Ohne diese Festlegung sind
+   die Durchschnitte zwischen Konfigurationen nicht vergleichbar.
 3. Am Ende Durchschnittswerte pro Metrik ausgeben.
 
 ### Konfigurationen vergleichen
@@ -354,6 +417,24 @@ python -m src.rag_eval --retriever hybrid
 | ------------- | ------------ | ---------------- | --------------- |
 | Dense (VL 4)  |              |                  |                 |
 | Hybrid        |              |                  |                 |
+
+> **Wenn beide Konfigurationen identische Werte liefern:** Bei kleinem Korpus und
+> starkem Embedder findet schon dense fast alles im Top-5-Fenster — der
+> Kontext-Treffer ist dann für beide ≈ 1.0 und die Tabelle zeigt keinen
+> Unterschied. Verkleinert das Kontextfenster, damit Retrieval-Qualität überhaupt
+> ins Gewicht fällt:
+>
+> ```bash
+> python -m src.rag_eval --retriever dense  --n 3
+> python -m src.rag_eval --retriever hybrid --n 3
+> ```
+>
+> Erst bei kleinem k zeigt sich der Effekt: Im Beispiel-Evalset verfehlt dense bei
+> Top-3 die Stelle zu „Bernd Hagedorn / `-4200`", hybrid nicht — Kontext-Treffer
+> **dense ≈ 0.93 vs. hybrid 1.0** (Faithfulness/Relevancy bleiben bei diesem
+> starken Modell in beiden Fällen ≈ 1.0). Deshalb sind **keyword-lastige Fragen**
+> im Evalset entscheidend — ohne sie belegt die Tabelle den Nutzen der hybriden
+> Suche nicht.
 
 **Richtwerte zur Kalibrierung** (aus der Vorlesung — keine absoluten Standards):
 Faithfulness > 0.8 stark, < 0.5 bedenklich; Answer Relevancy > 0.8 stark,
@@ -385,3 +466,4 @@ Wahrheit. Für Hochrisiko bleibt menschliche Evaluation der Goldstandard.
 | Hybrid ≙ Dense (kein Unterschied)            | Kandidatenfenster zu klein — beide Suchen mit `n_results * 4` aufrufen                                          |
 | Judge gibt keine parsebare Zahl zurück       | `temperature=0.0`, Zahl per Regex extrahieren, Prompt auf „nur die Zahl" verschärfen                            |
 | `InvalidDimensionException`                  | Collection mit anderem Embedding-Modell befüllt — `chroma_db/` löschen und neu ingesten (Gleiches-Modell-Regel) |
+| `Failed to send telemetry event ...`         | Kosmetisch (chromadb 1.0.7 gegen neuere posthog-Lib). In `src/vectorstore.py` per `Settings(anonymized_telemetry=False)` + Stummschalten des Loggers `chromadb.telemetry.product.posthog` abgestellt |
