@@ -4,10 +4,12 @@ Subkommandos:
     triage              Regelbasierter Report über alle Tickets (Stand VL 1)
     summarize T-1003    LLM-Zusammenfassung eines Tickets
     classify T-1003     Regel- vs. LLM-Klassifikation im Vergleich
+    scan                Injection-Scan über alle Tickets (Stand VL 6)
 """
 
 import argparse
 
+from src.guardrails import scan_ticket
 from src.llm import get_model
 from src.stats import print_stats
 from src.summarize import classify_ticket_llm, summarize_ticket
@@ -44,6 +46,24 @@ def cmd_classify(ticket_id: str) -> None:
         f"  LLM ({get_model()}):  "
         f"{llm_result['kategorie']} / {llm_result['prioritaet']}"
     )
+    if "injection_verdacht" in llm_result:
+        print(f"  ⚠ INJECTION-VERDACHT: {', '.join(llm_result['injection_verdacht'])}")
+        print("    → Ticket gehört in menschliche Review, nicht in die Automatik.")
+
+
+def cmd_scan() -> None:
+    """Offline-Scan aller Tickets auf Injection-Muster — kein LLM nötig."""
+    tickets = list(load_tickets())
+    verdaechtig = 0
+    for ticket in tickets:
+        findings = scan_ticket(ticket)
+        if findings:
+            verdaechtig += 1
+            print(f"⚠ {ticket['id']} | {ticket['betreff']}")
+            print(f"   Muster: {', '.join(findings)}")
+    print(f"\n{verdaechtig} von {len(tickets)} Tickets auffällig.")
+    if verdaechtig == 0:
+        print("Keine bekannten Injection-Muster gefunden.")
 
 
 def _require_ticket(ticket_id: str) -> dict:
@@ -61,6 +81,7 @@ def main() -> None:
     p_sum.add_argument("ticket_id", metavar="TICKET-ID")
     p_cls = sub.add_parser("classify", help="Regel- vs. LLM-Klassifikation")
     p_cls.add_argument("ticket_id", metavar="TICKET-ID")
+    sub.add_parser("scan", help="Injection-Scan über alle Tickets (offline)")
 
     args = parser.parse_args()
     if args.command == "triage":
@@ -69,6 +90,8 @@ def main() -> None:
         cmd_summarize(args.ticket_id)
     elif args.command == "classify":
         cmd_classify(args.ticket_id)
+    elif args.command == "scan":
+        cmd_scan()
 
 
 if __name__ == "__main__":
