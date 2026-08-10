@@ -7,15 +7,32 @@ einmal berechneten Embeddings zwischen Aufrufen erhalten bleiben — `ingest.py`
 schreibt, `search.py` liest.
 """
 
+import logging
+
 import chromadb
+from chromadb.config import Settings
 
 DB_PATH = "./chroma_db"
 DEFAULT_COLLECTION = "leinetech_kb"
 
+# chromadb 1.0.7 ruft posthog.capture() noch mit der alten Signatur auf; gegen
+# neuere posthog-Versionen scheitert das und wird als `logger.error(...)` in die
+# Ausgabe geschrieben ("Failed to send telemetry event ..."). Der Logger wird
+# stummgeschaltet — zusätzlich zum anonymized_telemetry=False unten.
+logging.getLogger("chromadb.telemetry.product.posthog").setLevel(logging.CRITICAL)
+
 
 def get_client():
-    """Persistenter ChromaDB-Client unter ./chroma_db."""
-    return chromadb.PersistentClient(path=DB_PATH)
+    """Persistenter ChromaDB-Client unter ./chroma_db.
+
+    `anonymized_telemetry=False` schaltet die ChromaDB-Telemetrie ab — sonst
+    spammt chromadb 1.0.7 bei jedem Aufruf `Failed to send telemetry event ...`
+    in die Ausgabe (Inkompatibilität mit neueren posthog-Versionen).
+    """
+    return chromadb.PersistentClient(
+        path=DB_PATH,
+        settings=Settings(anonymized_telemetry=False),
+    )
 
 
 def create_collection(name: str = DEFAULT_COLLECTION) -> chromadb.Collection:
