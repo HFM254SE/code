@@ -1,5 +1,10 @@
 # LeineTech Ticket-Triage — `vl06-guardrails`
 
+> Hinweis: Dieser Ordner enthält nur die Änderungen dieses Schritts. Lauffähig
+> (inkl. `data/tickets.json`, `eval/golden.jsonl`) ist er erst im
+> zusammengebauten Kurs-Branch — für Studierende via
+> `git checkout vl06-guardrails`.
+
 Endzustand des **Labs in VL 6**: Die LLM-Pipeline aus VL 3 wird **angegriffen**
 (T-1030, das Prompt-Injection-Easter-Egg) und dann **gehärtet**.
 

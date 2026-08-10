@@ -79,7 +79,10 @@ Füllt die TODOs:
    erfolgreichen Angriffen aus Teil 1. Deutsch **und** Englisch.
 2. **`scan_text`** — alle Muster case-insensitive gegen den Text prüfen,
    Trefferliste zurückgeben.
-3. **`filter_output`** — PII/Secrets maskieren (mind. E-Mail + API-Key).
+3. **`filter_output`** — PII/Secrets maskieren (mind. E-Mail + API-Key). Hier
+   genügt die einfache Variante `filter_output(response: str) -> str`; die
+   erweiterte 2-Parameter-Variante `filter_output(response, system_prompt)`
+   aus den Slides ist hier **nicht** gefragt.
 4. **Bonus:** `__main__`-Block — gegen `data/tickets.json` laufen lassen:
    Wie viele Tickets schlagen an?
 
@@ -89,6 +92,13 @@ Messen mit dem mitgelieferten Datensatz aus 12 Angriffen:
 python -m src.main scan          # über alle 30 echten Tickets
 python -m pytest tests/test_guardrails.py
 ```
+
+> Hinweis: `test_bekannte_angriffe_werden_erkannt` prüft gegen den
+> vollständigen Satz in `eval/injections.jsonl` (ca. 8 Technik-Kategorien,
+> u. a. System-Tag, Completion-Trick, Base64 und Markdown-Exfiltration) — eure
+> Muster müssen also über die 4 Techniken aus Teil 1 hinausgehen. Dieser Test
+> darf bis Teil 3 noch rot sein; entscheidend für Teil 2 ist zunächst
+> `test_keine_false_positives_auf_echten_tickets`.
 
 **Der entscheidende Test:** `test_keine_false_positives_auf_echten_tickets`.
 Ein Scanner, der die Hälfte der echten Tickets blockt, ist im Support
@@ -114,7 +124,7 @@ wird sie durchlassen, und das ist kein Bug.
    Schichten fängt die Lücken?
    - Schicht 1: Input-Scan (was ihr gebaut habt)
    - Schicht 2: gehärteter System-Prompt (Tickettext als *Daten* markieren)
-   - Schicht 4: Output-Filter (kein PII-Abfluss, selbst wenn die Injection durchkam)
+   - Schicht 3: Output-Filter (kein PII-Abfluss, selbst wenn die Injection durchkam)
 3. Tragt für **euer** System die OWASP-Top-10-Punkte ein, die wirklich greifen:
 
 | OWASP LLM 2025 | Relevant für die Triage? | Maßnahme bei uns |
