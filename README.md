@@ -1,82 +1,90 @@
-# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline-solution`
+# LeineTech Ticket-Triage — `vl05-rag-advanced-solution`
 
-**Musterlösung** nach dem Lab in **VL 4 (RAG: Ingestion-Pipeline)** — und
-zugleich der **Startpunkt für VL 5**. Aus den 8 Markdown-Artikeln der
-LeineTech-Wissensbasis (`docs/`) wird ein durchsuchbarer Vektor-Index.
+**Musterlösung** nach dem Lab in **VL 5 (Advanced RAG)**. Aus der Such-Pipeline
+von VL 4 wird ein **vollständiger RAG-Chatbot**: Retrieve → **Augment →
+Generate** — und mit **hybrider Suche** besser rankendes Retrieval.
 
-Neu gegenüber `vl04-rag-ingestion-pipeline-start` (im Lab gebaut):
+Neu gegenüber `vl05-rag-advanced-start` (im Lab gebaut):
 
-- `src/loader.py` — lädt die `.md`-Dokumente in ein einheitliches Format.
-- `src/chunker.py` — **rekursives Chunking** (Absätze → Zeilen → Sätze) mit
-  Überlappung und stabilen `chunk_id`s.
-- `src/embedder.py` — Embeddings mit `qwen3-embed-4b` (2560 Dim.) über den
-  **Kurs-Endpunkt (HomeCloud)**, via litellm — dieselbe Anbindung wie der Chat.
-- `src/vectorstore.py` — persistente **ChromaDB**-Collection unter `./chroma_db`
-  (idempotentes `upsert`).
-- `src/ingest.py` — verbindet alles zur Pipeline **Dokumente → Chunks →
-  Embeddings → ChromaDB**.
-- `src/search.py` — semantische Suche + Keyword-Baseline zum Vergleich.
+- `src/rag.py` — der **RAG-Client**: Kontextblock mit Quellen-Labels bauen
+  (Augment), geerdeter Prompt (Grounding + Zitierpflicht + Enthaltung) an das
+  LLM (Generate). Retriever umschaltbar: `--retriever dense|hybrid`.
+- `src/hybrid.py` — **hybride Suche**: dichte Vektorsuche + Keyword-Suche,
+  selbst fusioniert per **Reciprocal Rank Fusion** (RRF).
+- `src/rag_eval.py` — **Evaluation per LLM-as-Judge** (die RAG-Triade:
+  Kontext-Treffer, Faithfulness, Answer Relevancy); vergleicht dense vs. hybrid.
+  *(Vertiefung — im Lab optional.)*
+- `eval/rag_eval.jsonl` — kleines Evalset (einfach / schwer / unbeantwortbar).
 
-Embeddings laufen — wie Chat/Klassifikation (`src/llm.py`, VL 3) — über den
-Kurs-Endpunkt. Es braucht also `LLM_BASE_URL` / `LLM_API_KEY` in der Umgebung
+Alles läuft — wie Chat/Embeddings seit VL 3/4 — über den **Kurs-Endpunkt
+(HomeCloud)**. Es braucht `LLM_BASE_URL` / `LLM_API_KEY` in der Umgebung
 (siehe SETUP.md); der Endpunkt ist nur montags verfügbar und hat Cold Starts.
 
-## Pipeline füllen
+## Voraussetzung: Index füllen
 
 ```bash
 export LLM_BASE_URL="https://llm.homecloud.ee/v1"
 export LLM_API_KEY="<euer-key>"      # siehe SETUP.md
-python -m src.ingest docs
+python -m src.ingest docs            # Wissensbasis nach ./chroma_db indexieren
 ```
 
-Erwartete Ausgabe (ungefähr):
-
-```
-8 Dokumente geladen
-80 Chunks erzeugt
-80 Embeddings berechnet (2560 Dimensionen)
-Collection 'leinetech_kb': 80 Einträge gespeichert
-```
-
-*(Die genaue Chunk-Zahl hängt von `--chunk-size`/`--chunk-overlap` ab —
-mit den Defaults 500/50 sind es ~80.)*
-
-## Suchen
+## Fragen beantworten (RAG)
 
 ```bash
-python -m src.search "Wie verbinde ich mich mit dem VPN?"
-python -m src.search "Mein Passwort ist abgelaufen" --mode keyword
-python -m src.search "Drucker druckt nicht" --n 3
+python -m src.rag "Wie lange bleibt die VPN-Verbindung bestehen?"
+python -m src.rag "Nenne alle Voraussetzungen fürs VPN." --retriever hybrid
+python -m src.rag "Welches Gateway trage ich für Cisco Secure Client ein?" --retriever hybrid
+python -m src.rag "Wie viele Urlaubstage habe ich?"   # → Enthaltung (nicht im Korpus)
 ```
 
-Pro Treffer: **Rang, Ähnlichkeitswert, Quelle, Textvorschau**. Der `keyword`-Modus
-(reine Wortüberlappung) dient dem Vergleich — er gewinnt bei exakten Fachbegriffen,
-verliert bei Synonymen und Umschreibungen.
+Ausgabe: die generierte Antwort **plus** die zitierten Quellen. Die
+Enthaltungsanweisung sorgt dafür, dass unbeantwortbare Fragen ein ehrliches
+„Ich habe dazu keine Information in der Wissensbasis" bekommen statt einer
+selbstbewussten Halluzination.
 
-## Embedding-Modell
-
-Fest verdrahtet ist `qwen3-embed-4b` (2560 Dim.), das einzige Embedding-Modell
-des Kurs-Endpunkts. Überschreiben nur zu Testzwecken mit `EMBEDDING_MODEL`:
+## Hybride Suche direkt
 
 ```bash
-EMBEDDING_MODEL=<anderes-modell> python -m src.ingest docs
+python -m src.hybrid "Welches Gateway trage ich für Cisco Secure Client ein?"
 ```
 
-> **Gleiches-Modell-Regel:** Query und Chunks müssen mit demselben Modell
-> eingebettet werden — sonst liegen die Vektoren in unterschiedlichen Räumen
-> (oder haben nicht mal dieselbe Dimension) und die Suche wird zu Rauschen. Wer
-> `EMBEDDING_MODEL` wechselt, muss die Collection neu indexieren: `chroma_db/`
-> löschen und `python -m src.ingest docs` erneut ausführen.
+Dense allein ist „keyword-blind" (verfehlt exakte Codes/Namen wie
+`vpn.leinetech.de` oder `LT-PRN-02`), Keyword allein kennt keine Synonyme. RRF
+kombiniert beide Ranglisten **ohne Score-Normalisierung** — es zählt nur die
+Ränge; was in beiden Listen auftaucht, steigt nach oben.
+
+## Evaluieren (LLM-as-Judge) — Vertiefung
+
+```bash
+python -m src.rag_eval                              # Baseline: dense
+python -m src.rag_eval --retriever hybrid
+```
+
+Misst die **RAG-Triade** und gibt Durchschnitte aus. Das ist das Verfahren
+hinter RAGAS (**LLM-as-Judge**) — die Zahlen sind **Richtungssignale zum
+Vergleich von Konfigurationen**, keine absolute Wahrheit (Positions-,
+Ausführlichkeits-, Selbstverstärkungsbias). Richtwerte: Faithfulness > 0.8
+stark / < 0.5 bedenklich, Answer Relevancy > 0.8 stark / < 0.6 bedenklich.
+
+Im Lab ist die Evaluation als **Vertiefung** ausgewiesen (freiwillig) — die
+Musterlösung liefert sie fertig mit.
+
+> **Optional — „echtes" RAGAS:** In Produktion nimmt man das Standard-Framework
+> `ragas` (`from ragas import evaluate`, Metriken `faithfulness`,
+> `answer_relevancy`, `context_precision`). ⚠️ Neue Abhängigkeit → gemäß
+> Kurspolitik selbst installieren, und **die Version pinnen** (die API ändert
+> sich zwischen Releases). Bewusst *nicht* in `requirements.txt`, damit der
+> Pflichtteil abhängigkeitsfrei bleibt.
 
 ## Tests
 
 ```bash
-pytest                      # Loader/Chunker (offline, kein Netz/Endpunkt nötig)
+pytest                      # Loader/Chunker + RRF-Fusion (offline, kein Netz)
 ```
 
-Die Tests decken Laden und Chunking ab — die netzabhängigen Schritte (Embedding
-über HomeCloud, ChromaDB) werden im Lab manuell geprüft (siehe `labs/vl04-lab.md`).
+`tests/test_hybrid.py` sichert die Reciprocal Rank Fusion ab (reine
+Rang-Arithmetik). Die netzabhängigen Teile (RAG-Generierung, hybride Suche,
+Evaluation) werden im Lab manuell geprüft (siehe `labs/vl05-lab.md`).
 
-> Hier endet der VL-4-Stand. In VL 5 kommt der **Augment + Generate**-Schritt
-> dazu: Die hier indexierten Chunks werden dem LLM als Kontext übergeben — aus
-> der Suche wird ein RAG-Chatbot.
+> Hier endet der VL-5-Stand: aus der Ingestion-Pipeline von VL 4 ist ein
+> evaluierter, produktionsnaher RAG-Client geworden.
