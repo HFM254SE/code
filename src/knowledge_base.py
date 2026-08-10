@@ -55,18 +55,14 @@ def search_knowledge_base(query: str, top_k: int = 3, docs_dir: Path | None = No
     scored = []
     for path in sorted(base.glob("*.md")):
         content = path.read_text(encoding="utf-8")
-        # Treffer im Artikelnamen/Abschnittstitel zählen doppelt — sonst gewinnt
-        # ein Artikel, der „VPN" nur nebenbei erwähnt, gegen den VPN-Artikel.
-        name_terms = _tokenize(path.stem.replace("-", " "))
         for title, text in _split_sections(content):
             overlap = q_terms & _tokenize(text)
-            title_bonus = len(q_terms & (name_terms | _tokenize(title)))
-            if overlap or title_bonus:
+            if overlap:
                 scored.append({
                     "artikel": path.stem,
                     "abschnitt": title,
                     "text": text[:600],
-                    "score": len(overlap) + 2 * title_bonus,
+                    "score": len(overlap),
                 })
 
     scored.sort(key=lambda s: s["score"], reverse=True)

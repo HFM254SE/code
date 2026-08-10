@@ -160,16 +160,7 @@ if __name__ == "__main__":
     if ticket is None:
         raise SystemExit(f"Ticket {ticket_id} nicht gefunden.")
     print(f"=== Agent bearbeitet {ticket_id}: {ticket['betreff']} ===\n")
-    try:
-        print(handle_ticket(ticket))
-    except Exception as exc:
-        if "connect" in str(exc).lower() or "Connect" in type(exc).__name__:
-            raise SystemExit(
-                "Keine Verbindung zum Kurs-Endpunkt (HomeCloud).\n"
-                "→ LLM_BASE_URL / LLM_API_KEY gesetzt? Endpunkt erreichbar?\n"
-                "→ Sonst Plan B (Groq) — siehe SETUP.md."
-            ) from exc
-        raise
+    print(handle_ticket(ticket))
     from src.agent_tools import ESCALATIONS
 
     if ESCALATIONS:
