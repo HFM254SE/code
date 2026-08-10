@@ -1,26 +1,30 @@
+"""Laden der LeineTech-Support-Tickets aus der JSON-Datenbasis."""
+
 import json
-import os, sys
-import requests
+from functools import lru_cache
+from pathlib import Path
 
-CACHE = None
-
-
-def load_tickets(path="data/tickets.json", filter=None):
-    global CACHE
-    if CACHE != None:
-        return CACHE
-    try:
-        f = open(path)
-        data = json.load(f)
-    except:
-        data = []
-    CACHE = data
-    return data
+DEFAULT_TICKET_PATH = Path("data/tickets.json")
 
 
-def get_ticket(tid):
-    tickets = load_tickets()
-    for t in tickets:
-        if t["id"] == tid:
-            return t
+@lru_cache(maxsize=1)
+def load_tickets(path: Path = DEFAULT_TICKET_PATH) -> tuple[dict, ...]:
+    """Lädt alle Tickets aus der JSON-Datei.
+
+    Liefert ein unveränderliches Tupel, damit der Cache nicht versehentlich
+    von Aufrufern mutiert werden kann.
+
+    Raises:
+        FileNotFoundError: wenn die Ticket-Datei nicht existiert.
+        json.JSONDecodeError: wenn die Datei kein gültiges JSON enthält.
+    """
+    with open(path, encoding="utf-8") as file:
+        return tuple(json.load(file))
+
+
+def get_ticket(ticket_id: str, path: Path = DEFAULT_TICKET_PATH) -> dict | None:
+    """Liefert das Ticket mit der gegebenen ID oder None."""
+    for ticket in load_tickets(path):
+        if ticket["id"] == ticket_id:
+            return ticket
     return None

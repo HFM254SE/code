@@ -1,64 +1,61 @@
-import re
-import os
+"""Regelbasierte Triage: ordnet Tickets per Keyword-Suche einer Kategorie
+und Priorität zu.
+
+Die Reihenfolge der Kategorien ist Teil des Verhaltens (first match wins) —
+sie darf beim Refactoring nicht verändert werden.
+"""
+
 from src.ticket_loader import load_tickets
 
+# Reihenfolge ist relevant: die erste Kategorie mit Keyword-Treffer gewinnt.
+CATEGORY_KEYWORDS: dict[str, list[str]] = {
+    "Abrechnung": ["rechnung", "kosten", "vertrag", "tarif", "zahlung", "buchhaltung"],
+    "Zugang": ["passwort", "login", "anmelden", "konto", "gesperrt", "zugriff", "berechtigung"],
+    "Netzwerk": ["wlan", "vpn", "internet", "netzwerk", "verbindung", "lan"],
+    "Hardware": ["laptop", "drucker", "monitor", "tastatur", "maus", "docking", "akku", "headset"],
+    "Software": ["absturz", "fehlermeldung", "update", "installation", "lizenz", "programm", "anwendung"],
+}
+DEFAULT_CATEGORY = "Software"
 
-def classify_and_prioritize(t):
-    TXT = (t.get("betreff", "") + " " + t.get("text", "")).lower()
-    kategorie = "Software"
-    found = False
-    if found == False:
-        for w in ["rechnung", "kosten", "vertrag", "tarif", "zahlung", "buchhaltung"]:
-            if w in TXT:
-                kategorie = "Abrechnung"
-                found = True
-                break
-    if found == False:
-        for w in ["passwort", "login", "anmelden", "konto", "gesperrt", "zugriff", "berechtigung"]:
-            if w in TXT:
-                kategorie = "Zugang"
-                found = True
-                break
-    if found == False:
-        for w in ["wlan", "vpn", "internet", "netzwerk", "verbindung", "lan"]:
-            if w in TXT:
-                kategorie = "Netzwerk"
-                found = True
-                break
-    if found == False:
-        for w in ["laptop", "drucker", "monitor", "tastatur", "maus", "docking", "akku", "headset"]:
-            if w in TXT:
-                kategorie = "Hardware"
-                found = True
-                break
-    if found == False:
-        for w in ["absturz", "fehlermeldung", "update", "installation", "lizenz", "programm", "anwendung"]:
-            if w in TXT:
-                kategorie = "Software"
-                found = True
-                break
-    prioritaet = "mittel"
-    found2 = False
-    if found2 == False:
-        for w in ["dringend", "sofort", "produktion", "ausfall", "nichts geht", "komplett"]:
-            if w in TXT:
-                prioritaet = "hoch"
-                found2 = True
-                break
-    if found2 == False:
-        for w in ["frage", "gelegentlich", "kein stress", "wunsch", "irgendwann"]:
-            if w in TXT:
-                prioritaet = "niedrig"
-                found2 = True
-                break
+PRIORITY_KEYWORDS: dict[str, list[str]] = {
+    "hoch": ["dringend", "sofort", "produktion", "ausfall", "nichts geht", "komplett"],
+    "niedrig": ["frage", "gelegentlich", "kein stress", "wunsch", "irgendwann"],
+}
+DEFAULT_PRIORITY = "mittel"
+
+
+def _ticket_text(ticket: dict) -> str:
+    return f"{ticket.get('betreff', '')} {ticket.get('text', '')}".lower()
+
+
+def _first_match(text: str, rules: dict[str, list[str]], default: str) -> str:
+    for label, keywords in rules.items():
+        if any(keyword in text for keyword in keywords):
+            return label
+    return default
+
+
+def classify_and_prioritize(ticket: dict) -> tuple[str, str]:
+    """Liefert (Kategorie, Priorität) für ein einzelnes Ticket."""
+    text = _ticket_text(ticket)
+    kategorie = _first_match(text, CATEGORY_KEYWORDS, DEFAULT_CATEGORY)
+    prioritaet = _first_match(text, PRIORITY_KEYWORDS, DEFAULT_PRIORITY)
     return kategorie, prioritaet
 
 
-def triage_all(tickets=None):
-    if tickets == None:
-        tickets = load_tickets()
+def triage_all(tickets: list[dict] | None = None) -> list[dict]:
+    """Klassifiziert alle übergebenen Tickets (oder die gesamte Datenbasis)."""
+    if tickets is None:
+        tickets = list(load_tickets())
     results = []
-    for t in tickets:
-        k, p = classify_and_prioritize(t)
-        results.append({"id": t["id"], "betreff": t["betreff"], "kategorie": k, "prioritaet": p})
+    for ticket in tickets:
+        kategorie, prioritaet = classify_and_prioritize(ticket)
+        results.append(
+            {
+                "id": ticket["id"],
+                "betreff": ticket["betreff"],
+                "kategorie": kategorie,
+                "prioritaet": prioritaet,
+            }
+        )
     return results
