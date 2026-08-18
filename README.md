@@ -1,57 +1,82 @@
-# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline-start`
+# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline-solution`
 
-Ausgangszustand für das **Lab in VL 4 (RAG: Ingestion-Pipeline)**.
+**Musterlösung** nach dem Lab in **VL 4 (RAG: Ingestion-Pipeline)** — und
+zugleich der **Startpunkt für VL 5**. Aus den 8 Markdown-Artikeln der
+LeineTech-Wissensbasis (`docs/`) wird ein durchsuchbarer Vektor-Index.
 
-Aufgesetzt auf dem VL-3-Stand (LLM-Anschluss + Evaluierung). Das Triage-Tool
-läuft wie gehabt; die **Ingestion-Pipeline für RAG existiert noch nicht** — die
-baut ihr im Lab. Aus den 8 Markdown-Artikeln der LeineTech-Wissensbasis (`docs/`)
-soll ein durchsuchbarer Vektor-Index werden: die Grundlage für den RAG-Chatbot
-in VL 5.
-
-**Was schon da ist (aus VL 3):**
-
-- `src/llm.py` — litellm-Wrapper gegen den **Kurs-Endpunkt** (HomeCloud). Liefert
-  `get_base_url()` / `get_api_key()`, die ihr fürs Embedding wiederverwendet.
-- `src/summarize.py`, `src/triage.py`, `src/stats.py`, `src/ticket_loader.py`,
-  `src/main.py` — das bestehende Triage-Tool.
-
-**Was ihr im Lab baut** (Schritt für Schritt in `labs/vl04-lab.md`):
+Neu gegenüber `vl04-rag-ingestion-pipeline-start` (im Lab gebaut):
 
 - `src/loader.py` — lädt die `.md`-Dokumente in ein einheitliches Format.
 - `src/chunker.py` — **rekursives Chunking** (Absätze → Zeilen → Sätze) mit
-  Überlappung und stabilen `chunk_id`s. `tests/test_chunker.py` ist die Vorgabe:
-  am Anfang rot, am Ende grün.
+  Überlappung und stabilen `chunk_id`s.
 - `src/embedder.py` — Embeddings mit `qwen3-embed-4b` (2560 Dim.) über den
-  Kurs-Endpunkt, via litellm — dieselbe Anbindung wie der Chat.
-- `src/vectorstore.py` — persistente **ChromaDB**-Collection unter `./chroma_db`.
-- `src/ingest.py` — die Pipeline **Dokumente → Chunks → Embeddings → ChromaDB**.
+  **Kurs-Endpunkt (HomeCloud)**, via litellm — dieselbe Anbindung wie der Chat.
+- `src/vectorstore.py` — persistente **ChromaDB**-Collection unter `./chroma_db`
+  (idempotentes `upsert`).
+- `src/ingest.py` — verbindet alles zur Pipeline **Dokumente → Chunks →
+  Embeddings → ChromaDB**.
 - `src/search.py` — semantische Suche + Keyword-Baseline zum Vergleich.
 
 Embeddings laufen — wie Chat/Klassifikation (`src/llm.py`, VL 3) — über den
 Kurs-Endpunkt. Es braucht also `LLM_BASE_URL` / `LLM_API_KEY` in der Umgebung
 (siehe SETUP.md); der Endpunkt ist nur montags verfügbar und hat Cold Starts.
 
-## Ausführen
+## Pipeline füllen
 
 ```bash
-pip install -r requirements.txt
-export LLM_BASE_URL="https://llm.homecloud.ee/v1"   # Kurs-Endpunkt, siehe SETUP.md
-export LLM_API_KEY="<euer-key>"
-
-python -m src.main triage          # bestehendes Triage-Tool (Stand VL 3)
-pytest                             # test_chunker.py ist rot, bis ihr loader/chunker baut
+export LLM_BASE_URL="https://llm.homecloud.ee/v1"
+export LLM_API_KEY="<euer-key>"      # siehe SETUP.md
+python -m src.ingest docs
 ```
 
-## Struktur
+Erwartete Ausgabe (ungefähr):
 
 ```
-docs/                  8 Markdown-Artikel der LeineTech-Wissensbasis (Wissensquelle)
-data/tickets.json      Support-Tickets (aus VL 1)
-src/                   VL-3-Tool — hier entstehen loader/chunker/embedder/…
-tests/test_chunker.py  Vorgabe für loader + chunker (offline, kein Netz nötig)
-labs/vl04-lab.md       Schritt-für-Schritt-Anleitung für das Lab
+8 Dokumente geladen
+80 Chunks erzeugt
+80 Embeddings berechnet (2560 Dimensionen)
+Collection 'leinetech_kb': 80 Einträge gespeichert
 ```
 
-> Das fertige Ergebnis liegt in `vl04-rag-ingestion-pipeline-solution`. In VL 5
-> kommt der **Augment + Generate**-Schritt dazu: Die hier indexierten Chunks
-> werden dem LLM als Kontext übergeben — aus der Suche wird ein RAG-Chatbot.
+*(Die genaue Chunk-Zahl hängt von `--chunk-size`/`--chunk-overlap` ab —
+mit den Defaults 500/50 sind es ~80.)*
+
+## Suchen
+
+```bash
+python -m src.search "Wie verbinde ich mich mit dem VPN?"
+python -m src.search "Mein Passwort ist abgelaufen" --mode keyword
+python -m src.search "Drucker druckt nicht" --n 3
+```
+
+Pro Treffer: **Rang, Ähnlichkeitswert, Quelle, Textvorschau**. Der `keyword`-Modus
+(reine Wortüberlappung) dient dem Vergleich — er gewinnt bei exakten Fachbegriffen,
+verliert bei Synonymen und Umschreibungen.
+
+## Embedding-Modell
+
+Fest verdrahtet ist `qwen3-embed-4b` (2560 Dim.), das einzige Embedding-Modell
+des Kurs-Endpunkts. Überschreiben nur zu Testzwecken mit `EMBEDDING_MODEL`:
+
+```bash
+EMBEDDING_MODEL=<anderes-modell> python -m src.ingest docs
+```
+
+> **Gleiches-Modell-Regel:** Query und Chunks müssen mit demselben Modell
+> eingebettet werden — sonst liegen die Vektoren in unterschiedlichen Räumen
+> (oder haben nicht mal dieselbe Dimension) und die Suche wird zu Rauschen. Wer
+> `EMBEDDING_MODEL` wechselt, muss die Collection neu indexieren: `chroma_db/`
+> löschen und `python -m src.ingest docs` erneut ausführen.
+
+## Tests
+
+```bash
+pytest                      # Loader/Chunker (offline, kein Netz/Endpunkt nötig)
+```
+
+Die Tests decken Laden und Chunking ab — die netzabhängigen Schritte (Embedding
+über HomeCloud, ChromaDB) werden im Lab manuell geprüft (siehe `labs/vl04-lab.md`).
+
+> Hier endet der VL-4-Stand. In VL 5 kommt der **Augment + Generate**-Schritt
+> dazu: Die hier indexierten Chunks werden dem LLM als Kontext übergeben — aus
+> der Suche wird ein RAG-Chatbot.
