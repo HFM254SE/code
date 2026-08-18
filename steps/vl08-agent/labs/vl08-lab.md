@@ -92,8 +92,8 @@ python -m src.agent T-1003      # Rechnungsmodul-Bug → einordnen, ggf. eskalie
 ```bash
 python -m src.agent T-1030
 ```
-T-1030 enthält die Prompt-Injection. In der Musterlösung greift eine
-**Nicht-LLM-Vorabprüfung** (`injection_check`) und eskaliert sofort — das
+T-1030 enthält die Prompt-Injection. Eine im Gerüst vorgegebene
+**Nicht-LLM-Vorabprüfung** (`injection_check`) greift und eskaliert sofort — das
 Ticket erreicht das Modell gar nicht. **Diskutiert:** Warum ist das bei einem
 *handelnden* Agenten noch wichtiger als bei der reinen Klassifikation aus VL 6?
 (Stichwort Excessive Agency: ein Agent, der Tools ausführt, kann durch eine
