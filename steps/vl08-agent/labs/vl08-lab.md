@@ -5,7 +5,11 @@ Agenten** mit LangGraph. Er entscheidet selbst, welche Tools er in welcher
 Reihenfolge aufruft, durchsucht die Wissensbasis (`docs/`) und eskaliert bei
 Bedarf an einen Menschen — der ReAct-Loop aus VL 7 in Code.
 
-**Dauer:** ~90 Minuten (Teil 1: ~20 min · Teil 2: ~35 min · Teil 3: ~20 min · Abschluss: ~15 min)
+**So arbeitet ihr:** eigenständig, allein oder in Gruppen (organisiert euch selbst),
+in eurem Tempo — **KI-Unterstützung ausdrücklich erwünscht**. Am Ende besprechen wir
+die Erfahrungen gemeinsam.
+
+**Dauer:** ~90 Minuten Kern (Teil 1: ~20 min · Teil 2: ~35 min · Teil 3: ~20 min · Reflexion: ~15 min) — Erweiterungen frei wählbar, in eurem Tempo.
 
 ---
 
@@ -73,7 +77,7 @@ Füllt die drei TODOs:
 2. **`route`** — hat die letzte Nachricht `tool_calls`? → `"tools"`, sonst `END`.
 3. **`build_agent`** — Nodes, Entry-Point, conditional edge + Rück-Edge `tools → agent`.
 
-Ausführen und den Tool-Verlauf beobachten:
+Ausführen — die CLI zeigt jeweils die finale Antwort (den Tool-für-Tool-Verlauf macht ihr gleich mit `stream()` sichtbar):
 
 ```bash
 python -m src.agent T-1006      # VPN-Frage → kb_search → Antwort
@@ -81,12 +85,29 @@ python -m src.agent T-1018      # einfache Frage → KB-Lösung
 python -m src.agent T-1003      # Rechnungsmodul-Bug → einordnen, ggf. eskalieren
 ```
 
+**Den Loop sichtbar machen:** `invoke` zeigt nur das Endergebnis — `stream()` zeigt jeden Node-Durchlauf:
+
+```python
+from src.agent import build_agent
+from langchain_core.messages import HumanMessage
+
+agent = build_agent()
+state = {"messages": [HumanMessage("Bearbeite Ticket T-1006 …")], "ticket_id": "T-1006"}
+for schritt in agent.stream(state, stream_mode="values"):
+    m = schritt["messages"][-1]
+    print(m.type, "→", getattr(m, "tool_calls", None) or m.content[:80])
+```
+
+**Grenzen provozieren:** ein Tool absichtlich `raise TimeoutError(...)` werfen lassen (der
+Agent erhält „Tool-Fehler: …") oder `handle_ticket(get_ticket("T-1006"), recursion_limit=2)`
+aufrufen → `GraphRecursionError`.
+
 > Stecken geblieben? `git checkout vl08-agent` zeigt die Musterlösung mit
 > `recursion_limit`-Schutz und der VL-6-Vorabprüfung.
 
 ---
 
-## Teil 3 — Sicherheit & Grenzen (Einzelarbeit, ~20 min)
+## Teil 3 — Sicherheit & Grenzen (~20 min)
 
 **Aufgabe A — Der Angriff von VL 6, jetzt gegen einen Agenten:**
 ```bash
@@ -105,18 +126,22 @@ destruktiv. Skizziert für euch: Welche Tools bräuchte ein
 zurücksetzen)? Welche davon dürfen **nie** ohne menschliche Freigabe laufen?
 Wo genau setzt ihr den Human-in-the-Loop?
 
-**Offene Erweiterungen (wer schnell ist):**
-- Memory: vorige Lösungen im State halten und wiederverwenden.
-- Review-Node: eine zweite LLM-Instanz prüft die Antwort vor dem Versand.
-- A2A-Skizze: Wie sähe ein zweiter Agent (z. B. Eskalations-Spezialist) als
-  eigener A2A-Service aus (Agent Card, Task Lifecycle)?
+**Erweiterungen — frei wählbar, in eurem Tempo (Startcode auf den Folien für Antwort-Review und Eskalations-Tools; A2A und Memory ohne Code):**
+- **Antwort-Review** (mittel): eine zweite LLM-Instanz prüft die Entwurfsantwort
+  vor dem Versand — neuer Node zwischen `agent` und `END`, Conditional Edge.
+- **Eskalations-Tools** (schwer): weitere Tools nach *Least Privilege* (Ticket
+  schließen, Konto zurücksetzen) — `reset_account` nur mit echtem
+  Human-in-the-Loop (`interrupt()` + Checkpointer).
+- **A2A skizzieren** (Konzept): Wie sähe ein zweiter Agent (Eskalations-
+  Spezialist) als eigener A2A-Service aus (Agent Card, Task Lifecycle)?
+- *Wer schnell ist:* Memory — vorige Lösungen im State halten und wiederverwenden.
 
 ---
 
 ## Teil 4 — Reflexion (~15 min)
 
-**Kurze gemeinsame Besprechung (2–3 min je Person):** Bei welchem Ticket hat der Agent gut/schlecht
-entschieden? Welches Tool wurde unnötig oder gar nicht aufgerufen?
+**Gemeinsame Besprechung im Plenum** (wer mag, zeigt kurz seine Lösung): Bei welchem Ticket hat der
+Agent gut/schlecht entschieden? Welches Tool wurde unnötig oder gar nicht aufgerufen?
 
 **Leitfragen:**
 - Wann lohnt ein Agent gegenüber der festen Pipeline aus VL 3? (Mehr Freiheit
