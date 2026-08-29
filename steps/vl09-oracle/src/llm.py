@@ -81,4 +81,9 @@ def chat(
         api_key=get_api_key(),
         temperature=temperature,
     )
+    # litellm.completion() liefert je nach Aufruf ein ModelResponse ODER einen
+    # Streaming-Wrapper. Wir streamen hier nicht — das festzuhalten kostet eine
+    # Zeile und erspart den Blindflug auf `.choices`.
+    if not isinstance(response, litellm.ModelResponse):
+        raise TypeError("chat() erwartet eine vollständige Antwort, kein Streaming.")
     return response.choices[0].message.content or ""

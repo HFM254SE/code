@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
 
 def _convert(raw: str):
@@ -59,8 +60,12 @@ def _strip_comment(line: str) -> str:
     return "".join(out).rstrip()
 
 
-def _parse(lines: list[tuple[int, str]], pos: int, indent: int):
-    """Rekursiv einen Block ab Einrückung `indent` parsen."""
+def _parse(lines: list[tuple[int, str]], pos: int, indent: int) -> tuple[Any, int]:
+    """Rekursiv einen Block ab Einrückung `indent` parsen.
+
+    Der erste Rückgabewert ist ein YAML-Knoten beliebiger Art (Map, Liste oder
+    Skalar) — welcher davon, entscheidet erst der Inhalt. Deshalb `Any`.
+    """
     # Listen-Block?
     if pos < len(lines) and lines[pos][0] == indent and lines[pos][1].startswith("- "):
         items = []

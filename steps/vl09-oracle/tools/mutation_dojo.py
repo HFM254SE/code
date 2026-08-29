@@ -35,6 +35,7 @@ import importlib.util
 import itertools
 import sys
 from pathlib import Path
+from types import ModuleType
 
 REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
@@ -56,9 +57,11 @@ TEST_ORACLE = REPO / "tests" / "test_triage_oracle.py"
 TEST_SPEC = REPO / "tests" / "test_openapi_spec.py"
 
 
-def load_test_module(path: Path):
+def load_test_module(path: Path) -> ModuleType:
     """Lädt eine Testdatei als Modul — ohne pytest, ohne Installation."""
     spec = importlib.util.spec_from_file_location(f"vl09_{path.stem}", path)
+    if spec is None or spec.loader is None:  # nur bei kaputtem Pfad erreichbar
+        raise ImportError(f"Testdatei nicht als Modul ladbar: {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -254,7 +257,7 @@ def find_distinguishing_input(row: str, kw: str, extra: list[str] | None = None)
 
 def run_suite(name: str, scope: str) -> None:
     suite, fehler = build_suite(name)
-    if fehler:
+    if suite is None:
         print(f"Suite '{name}' kann noch nicht gemessen werden:")
         print(f"  {fehler}")
         return
@@ -273,7 +276,7 @@ def run_suite(name: str, scope: str) -> None:
 
     total = len(mutants)
     print(f"Suite '{name}' — Mutantenklasse: ein Keyword löschen ({scope})")
-    print(f"  auf dem intakten Modul : grün")
+    print("  auf dem intakten Modul : grün")
     print(f"  Mutanten               : {total}")
     print(f"  eliminiert             : {len(killed)}")
     print(f"  überlebt               : {len(survived)}")

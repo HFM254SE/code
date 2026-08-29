@@ -24,6 +24,7 @@ import json
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.runnables import Runnable
 from langchain_litellm import ChatLiteLLM
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
@@ -51,7 +52,9 @@ class TicketAgentState(TypedDict):
     ticket_id: str
 
 
-def _model() -> ChatLiteLLM:
+def _model() -> Runnable:
+    # Rückgabetyp ist Runnable, nicht ChatLiteLLM: bind_tools() liefert das
+    # Modell MIT gebundenen Tools zurück — ein Runnable, kein Chat-Modell mehr.
     # hosted_vllm/ → litellm spricht den OpenAI-kompatiblen vLLM-Endpunkt mit
     # eigenem HTTP-Client an (der WAF vor dem Gateway blockt den User-Agent des
     # OpenAI-SDK). Konfiguration kommt aus src/llm.py (siehe SETUP.md).

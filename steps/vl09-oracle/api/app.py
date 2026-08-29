@@ -25,9 +25,27 @@ from src.triage import classify_and_prioritize
 
 app = FastAPI(title="LeineTech Ticket-API", version="1.0.0")
 
-# Kategorien aus src/ als Enum, damit FastAPI den Query-Parameter validiert
-# wie die Spec es verlangt (Schema "Kategorie" ist dort ein Enum).
-KategorieEnum = Enum("KategorieEnum", {k: k for k in CATEGORIES}, type=str)
+
+# Kategorien als Enum, damit FastAPI den Query-Parameter validiert wie die
+# Spec es verlangt (Schema "Kategorie" ist dort ein Enum).
+#
+# Ausgeschrieben statt per `Enum("KategorieEnum", ...)` erzeugt: ein zur
+# Laufzeit gebautes Enum ist für einen Typprüfer nur eine Variable und darf
+# dann nicht als Annotation stehen. Die Kopplung an src/ geht dadurch nicht
+# verloren — sie wandert nur von der Erzeugung in die Zusicherung darunter.
+class KategorieEnum(str, Enum):
+    Abrechnung = "Abrechnung"
+    Zugang = "Zugang"
+    Netzwerk = "Netzwerk"
+    Hardware = "Hardware"
+    Software = "Software"
+
+
+# Eine Quelle der Wahrheit bleibt src/: laufen die Listen auseinander, scheitert
+# schon der Import — nicht erst irgendein Request.
+assert [k.value for k in KategorieEnum] == CATEGORIES, (
+    "KategorieEnum weicht von CATEGORY_KEYWORDS ab — Drift zwischen API und Triage"
+)
 
 # In-Memory-Store: beim Start aus data/tickets.json geladen; POST legt neue
 # Tickets hier ab, damit sie danach per GET abrufbar sind (Spec-Versprechen!).

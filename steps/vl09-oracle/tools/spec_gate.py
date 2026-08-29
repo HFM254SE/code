@@ -13,9 +13,13 @@ Zwei-Seiten-Kriterium — beides muss gelten:
     grün auf api/app.py               (sonst prüft es das Falsche)
 
 Ein Gate, das immer rot ist, ist von einem funktionierenden Gate nicht zu
-unterscheiden. Genau daran scheitert der erste Entwurf — mit Absicht.
+unterscheiden. Ein Gate, das immer grün ist, auch nicht.
 
-EURE AUFGABE: die sechs TODOs unten. Alles andere ist Plumbing und fertig.
+Dieses Gate ist FERTIG — im Lab benutzt ihr es als Prüfwerkzeug. Lesenswert
+sind trotzdem zwei Entscheidungen darin: die Aufrufverfolgung in
+`_raised_status_codes()` (warum app.py grün ist, obwohl der 404 in
+`_require()` steckt) und `FRAMEWORK_CODES` (welche Statuscodes der Anwendung
+gehören und welche dem Framework). Ein Gate ist nie neutral.
 """
 
 from __future__ import annotations
@@ -215,7 +219,7 @@ def response_fields(model_name: str | None, classes: dict) -> set[str] | None:
 
 
 # ---------------------------------------------------------------------------
-# TODO-Bereich — hier ist eure Arbeit
+# Entscheidungen & Vergleiche
 # ---------------------------------------------------------------------------
 
 # Statuscodes, die FastAPI SELBST erzeugt: 400 bei nicht parsbarem Body, 422
@@ -242,7 +246,7 @@ SPEC_RESPONSE_FIELDS = {
 def gate(pyfile: Path) -> list[Befund]:
     """Vergleicht die Implementierung mit der Spec und liefert alle Befunde.
 
-    Anforderungen — je ein TODO:
+    Sechs Prüfungen:
 
       1. ROUTE   Jede in der Spec deklarierte (Methode, Pfad)-Kombination
                  existiert in der Implementierung.
@@ -256,6 +260,8 @@ def gate(pyfile: Path) -> list[Befund]:
                  in beide Richtungen: fehlende UND unspezifizierte.
       6. SCHEMA  Die Feldnamen des Response-Modells stimmen mit
                  SPEC_RESPONSE_FIELDS überein (nutzt `response_fields(...)`).
+                 Schemas ohne Eintrag dort werden STUMM übersprungen — ein von
+                 Hand gepflegtes Orakel ignoriert, was es nicht kennt.
     """
     spec = spec_model()
     impl = impl_model(pyfile)
@@ -266,25 +272,48 @@ def gate(pyfile: Path) -> list[Befund]:
         ort = f"{method} {path}"
         ist = impl["ops"].get(key)
 
-        # TODO 1 — ROUTE: fehlt die Route ganz? Dann Befund und weiter.
-        ...
+        # 1 — ROUTE: fehlt die Route ganz? Dann Befund und weiter.
+        if ist is None:
+            befunde.append(Befund("ROUTE", ort, "in der Implementierung nicht vorhanden"))
+            continue
 
-        # TODO 3 — STATUS: Erfolgscode vergleichen (Default 200 beachten).
-        ...
+        # 3 — STATUS: Erfolgscode vergleichen (FastAPI-Default ist 200).
+        ist_status = ist["status"] if ist["status"] is not None else 200
+        if soll["success"] is not None and ist_status != soll["success"]:
+            befunde.append(Befund("STATUS", ort,
+                                  f"Erfolgscode {ist_status}, Spec verlangt {soll['success']}"))
 
-        # TODO 4 — ERRCODE: Spec-Fehlercodes >= 400 erreichbar?
-        #          FRAMEWORK_CODES ausnehmen — sonst schlägt das Gate auf
-        #          api/app.py an, und zwar zu Recht nicht.
-        ...
+        # 4 — ERRCODE: nur Codes prüfen, die die ANWENDUNG entscheidet.
+        #     400/422 erzeugt FastAPI selbst, ohne `raise` im Handler — sie zu
+        #     fordern würde den korrekten Server anschwärzen.
+        pflicht = {c for c in soll["codes"] if c >= 400 and c not in FRAMEWORK_CODES}
+        fehlend = sorted(pflicht - ist["raised"])
+        if fehlend:
+            befunde.append(Befund("ERRCODE", ort,
+                                  f"Spec-Fehlercode(s) {fehlend} im Handler nicht erreichbar"))
 
-        # TODO 5 — QPARAM: Namen in beide Richtungen vergleichen.
-        ...
+        # 5 — QPARAM: Namen in beide Richtungen vergleichen.
+        fehlt = sorted(soll["qparams"] - ist["qparams"])
+        extra = sorted(ist["qparams"] - soll["qparams"])
+        if fehlt:
+            befunde.append(Befund("QPARAM", ort, f"Spec-Parameter {fehlt} fehlen"))
+        if extra:
+            befunde.append(Befund("QPARAM", ort, f"nicht spezifizierte Parameter {extra}"))
 
-        # TODO 6 — SCHEMA: Response-Feldnamen vergleichen.
-        ...
+        # 6 — SCHEMA: Response-Feldnamen vergleichen (nur bekannte Schemas).
+        soll_name = soll["response_schema"]
+        soll_felder = SPEC_RESPONSE_FIELDS.get(soll_name) if soll_name else None
+        ist_felder = response_fields(ist["response_model"], impl["classes"])
+        if soll_felder and ist_felder and soll_felder != ist_felder:
+            befunde.append(Befund("SCHEMA", ort,
+                                  f"Response-Felder {sorted(ist_felder)} "
+                                  f"!= Spec {sorted(soll_felder)}"))
 
-    # TODO 2 — EXTRA: Routen der Implementierung, die die Spec nicht deklariert.
-    ...
+    # 2 — EXTRA: Routen der Implementierung, die die Spec nicht deklariert.
+    for key in impl["ops"]:
+        if key not in spec["ops"]:
+            befunde.append(Befund("EXTRA", f"{key[0]} {key[1]}",
+                                  "nicht in der Spec deklariert"))
 
     return befunde
 
