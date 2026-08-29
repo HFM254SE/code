@@ -1,13 +1,13 @@
-"""Minimaler YAML-Leser fuer api/openapi.yaml — reine Standardbibliothek.
+"""Minimaler YAML-Leser für api/openapi.yaml — reine Standardbibliothek.
 
 Warum nicht PyYAML? Weil dieses Lab **ohne pip install** laufen soll. Der
 Preis: dieser Leser versteht nur die YAML-Teilmenge, die in unserer Spec
 vorkommt (verschachtelte Maps, `- `-Listen, Inline-Listen `[a, b]`,
-gequotete Strings, gefaltete Bloecke `>`), und er loest **keine `$ref`
+gequotete Strings, gefaltete Blöcke `>`), und er löst **keine `$ref`
 auf** — `$ref` bleibt ein ganz normaler String-Wert.
 
-Das ist Absicht und wird im Lab zum Thema: ein Pruefer ist nie besser als
-das, was er von der Spec ueberhaupt sehen kann.
+Das ist Absicht und wird im Lab zum Thema: ein Prüfer ist nie besser als
+das, was er von der Spec überhaupt sehen kann.
 
 In Produktion nehmt ihr `yaml.safe_load` plus einen echten Schema-Validator.
 """
@@ -60,7 +60,7 @@ def _strip_comment(line: str) -> str:
 
 
 def _parse(lines: list[tuple[int, str]], pos: int, indent: int):
-    """Rekursiv einen Block ab Einrueckung `indent` parsen."""
+    """Rekursiv einen Block ab Einrückung `indent` parsen."""
     # Listen-Block?
     if pos < len(lines) and lines[pos][0] == indent and lines[pos][1].startswith("- "):
         items = []
@@ -102,7 +102,7 @@ def _parse(lines: list[tuple[int, str]], pos: int, indent: int):
         cur_indent, text = lines[pos]
         if cur_indent < indent:
             break
-        if cur_indent > indent:      # sollte nicht passieren; defensiv ueberspringen
+        if cur_indent > indent:      # sollte nicht passieren; defensiv überspringen
             pos += 1
             continue
         if text.startswith("- "):
@@ -114,7 +114,7 @@ def _parse(lines: list[tuple[int, str]], pos: int, indent: int):
         pos += 1
         val = val.strip()
         if val in (">", "|", ">-", "|-"):
-            # gefalteter Block: alle tiefer eingerueckten Zeilen einsammeln
+            # gefalteter Block: alle tiefer eingerückten Zeilen einsammeln
             chunk = []
             while pos < len(lines) and lines[pos][0] > cur_indent:
                 chunk.append(lines[pos][1])

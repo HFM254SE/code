@@ -1,13 +1,16 @@
 """Referenz-Implementierung der LeineTech Ticket-API — konform zu openapi.yaml.
 
 Das ist der Soll-Zustand: Dieser Server hält sich exakt an die Spec. In
-Lab-Teil 3 vergleicht ihr ihn mit `drifted_server.py`, der absichtlich
+Lab-Teil 2 vergleicht ihr ihn mit `drifted_server.py`, der absichtlich
 abweicht. Gebaut mit FastAPI, weil FastAPI die OpenAPI-Spec aus dem Code
 selbst generiert (`/docs`, `/openapi.json`) — so lässt sich Drift direkt
 maschinell prüfen.
 
-    python -m uvicorn api.app:app --reload
-    # Doku unter http://localhost:8000/docs
+Diese Datei ist die *grüne* Seite des Abnahme-Kriteriums: ein Gate, das
+hier Befunde meldet, prüft das Falsche.
+
+    python3 -m uvicorn api.app:app --reload
+    # Doku unter http://localhost:8000/docs — für das Gate nicht nötig
 """
 
 import re

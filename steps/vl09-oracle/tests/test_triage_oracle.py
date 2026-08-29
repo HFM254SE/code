@@ -1,12 +1,17 @@
-"""Datengetriebene Tests fuer die Triage-Keywords — GERUEST, drei TODOs.
+"""Datengetriebene Tests für die Triage-Keywords — GERÜST, drei TODOs.
 
-Wird in Teil 1 des Labs gemeinsam gefuellt. Absichtlich eine schlichte
-Schleife statt `@pytest.mark.parametrize`: so laeuft dieselbe Datei unter
-pytest UND unter tools/mutation_dojo.py, und beide zeigen dieselbe Zahl.
+Wird in Teil 1 des Labs gemeinsam gefüllt. Absichtlich eine schlichte
+Schleife statt `@pytest.mark.parametrize`: so läuft dieselbe Datei unter
+pytest UND unter tools/mutation_dojo.py. Der Dojo führt genau die Tests
+aus, die ihr hier schreibt — er hat keine eigene Kopie davon.
 
-Ausfuehren:
-    python3 tools/mutation_dojo.py --suite oracle     # TODO 1
-    python3 tools/mutation_dojo.py --suite frozen     # TODO 2
+Deshalb: **die drei Funktionsnamen bitte nicht umbenennen.** Der Dojo
+sucht sie namentlich; ein umbenannter Test gilt ihm als ungefüllt.
+
+Ausführen:
+    python3 tools/mutation_dojo.py --suite oracle                      # TODO 1
+    python3 tools/mutation_dojo.py --suite frozen                      # TODO 2
+    python3 tools/mutation_dojo.py --tests tests/test_triage_oracle.py # alle drei
 """
 
 from src.triage import CATEGORY_KEYWORDS, classify_and_prioritize
@@ -20,13 +25,13 @@ def _ticket(betreff: str, text: str) -> dict:
 # ---------------------------------------------------------------------------
 # TODO 1 — Der naheliegende Weg
 #
-# Schreibt EINEN Test, der ueber alle Keywords laeuft und prueft, dass jedes
-# Keyword seiner Kategorie zugeordnet wird. Nutzt dafuer CATEGORY_KEYWORDS —
+# Schreibt EINEN Test, der über alle Keywords läuft und prüft, dass jedes
+# Keyword seiner Kategorie zugeordnet wird. Nutzt dafür CATEGORY_KEYWORDS —
 # also die Tabelle aus dem Modul. Keine Magic Strings, kein Duplikat: die
-# Refaktorierung, die man in jedem Review vorschlagen wuerde.
+# Refaktorierung, die man in jedem Review vorschlagen würde.
 #
 # Anforderungen:
-#   1. eine Schleife ueber CATEGORY_KEYWORDS.items()
+#   1. eine Schleife über CATEGORY_KEYWORDS.items()
 #   2. pro Keyword ein Ticket bauen (betreff = text = Keyword)
 #   3. assert kategorie == erwartete Kategorie
 #
@@ -45,11 +50,13 @@ def test_jedes_keyword_trifft_seine_kategorie():
 # die HIER in dieser Datei steht.
 #
 # Anforderungen:
-#   1. FROZEN als dict[str, tuple[str, ...]] hier im Testmodul anlegen
+#   1. FROZEN als dict[str, tuple[str, ...]] hier im Testmodul anlegen —
+#      als ausgeschriebenes Literal, NICHT aus CATEGORY_KEYWORDS abgeleitet
+#      (eine Ableitung wäre wieder dasselbe mitwandernde Orakel)
 #   2. sonst identische Schleife und identische Assertion
 #   3. Zahl aus --suite frozen mit der aus TODO 1 vergleichen
 #
-# Ja, das durpliziert Daten. Notiert im Kommentar, WARUM das hier richtig ist.
+# Ja, das dupliziert Daten. Notiert im Kommentar, WARUM das hier richtig ist.
 # ---------------------------------------------------------------------------
 
 FROZEN: dict[str, tuple[str, ...]] = {}
@@ -62,10 +69,22 @@ def test_jedes_keyword_trifft_seine_kategorie_eingefroren():
 # ---------------------------------------------------------------------------
 # TODO 3 — Die ehrliche Grenze
 #
-# Beide Tests oben setzen betreff UND text auf dasselbe Keyword. Baut einen
-# Test, der das Keyword NUR in den Betreff schreibt und den Text leer laesst
-# ("kein inhalt"). Was passiert — und was sagt das ueber die Eingabemenge,
-# gegen die wir gemessen haben?
+# Beide Tests oben setzen betreff UND text auf dasselbe Keyword. Baut
+# dieselbe Schleife noch einmal, aber diesmal steht das Keyword NUR im
+# Betreff; als Text nehmt ihr einen festen Platzhalter ohne Keyword, z. B.
+# "kein inhalt". Erwartung ist weiterhin FROZEN.
+#
+# Laufen lassen:
+#   python3 tools/mutation_dojo.py --tests tests/test_triage_oracle.py
+#
+# Was ihr sehen werdet: der Test ist grün, alle 34 Fälle bestehen. Er
+# findet also NICHTS, was die beiden Tests oben nicht schon gefunden hätten.
+#
+# Notiert im Kommentar, warum: welche Felder liest _ticket_text() — und was
+# heißt das für die Eingabemenge, gegen die wir den Score gemessen haben?
+# (Stichwort: mehr Testfälle sind nicht dasselbe wie mehr Orakel. Diese
+# Variation ändert die Eingabe nicht entlang einer Dimension, auf die der
+# Prüfling überhaupt reagiert.)
 # ---------------------------------------------------------------------------
 
 def test_keyword_nur_im_betreff():

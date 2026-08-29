@@ -1,11 +1,11 @@
-"""Strukturtests fuer die OpenAPI-Spec — offline, kein Server, keine Installation.
+"""Strukturtests für die OpenAPI-Spec — offline, kein Server, keine Installation.
 
-Prueft, dass die Spec self-consistent ist und zur Projektlogik passt (z. B.
-dass das Kategorie-Enum mit den Triage-Regeln uebereinstimmt).
+Prüft, dass die Spec self-consistent ist und zur Projektlogik passt (z. B.
+dass das Kategorie-Enum mit den Triage-Regeln übereinstimmt).
 
-Frueher brauchte diese Datei PyYAML und benutzte `pytest.importorskip` —
-ohne PyYAML wurde das Modul also stillschweigend UEBERSPRUNGEN, und "gruen"
-hiess dann "nie gelaufen". Jetzt liest sie die Spec mit tools/specyaml.py aus
+Früher brauchte diese Datei PyYAML und benutzte `pytest.importorskip` —
+ohne PyYAML wurde das Modul also stillschweigend ÜBERSPRUNGEN, und "grün"
+hieß dann "nie gelaufen". Jetzt liest sie die Spec mit tools/specyaml.py aus
 der Standardbibliothek: kein pip install, und ein Skip kann sich nicht mehr
 als Erfolg tarnen.
 """
@@ -34,10 +34,10 @@ def test_alle_erwarteten_pfade_vorhanden():
 
 
 def test_kategorie_enum_passt_zu_triage_regeln():
-    """Der Test, der in Teil 1 des Labs die Pointe traegt.
+    """Der Test, der in Teil 1 des Labs die Pointe trägt.
 
-    Er vergleicht zwei unabhaengige Repraesentationen derselben Fachlichkeit:
-    das Enum in der Spec und die Keyword-Tabelle im Code. Genau deshalb toetet
+    Er vergleicht zwei unabhängige Repräsentationen derselben Fachlichkeit:
+    das Enum in der Spec und die Keyword-Tabelle im Code. Genau deshalb eliminiert
     er einen Mutanten, den keiner der Unit-Tests sieht.
     """
     enum = set(_spec()["components"]["schemas"]["Kategorie"]["enum"])
@@ -54,7 +54,7 @@ def test_jede_operation_hat_operationid():
 
 
 def test_limit_hat_grenzen():
-    """Die Spec sagt 1..100 — der drifted server laesst die Grenzen weg."""
+    """Die Spec sagt 1..100 — der drifted server lässt die Grenzen weg."""
     params = _spec()["paths"]["/tickets"]["get"]["parameters"]
     limit = next(p for p in params if p["name"] == "limit")
     assert limit["schema"]["minimum"] == 1

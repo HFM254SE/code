@@ -1,11 +1,11 @@
 """Implementierung mit ABSICHTLICHEN Abweichungen von api/openapi.yaml.
 
-Zielscheibe fuer das Konformitaets-Gate in Teil 2 des Labs. Diese Datei ist
+Zielscheibe für das Konformitäts-Gate in Teil 2 des Labs. Diese Datei ist
 kein Suchspiel: **welche** Abweichungen hier stecken, steht auf der Folie und
 im Lab-Sheet. Die Aufgabe ist, das Gate zu bauen, das sie findet — und das
-gleichzeitig auf `api/app.py` gruen bleibt.
+gleichzeitig auf `api/app.py` grün bleibt.
 
-    python -m uvicorn api.drifted_server:app --port 8001
+    python3 -m uvicorn api.drifted_server:app --port 8001
     # nur falls ihr sie laufen sehen wollt; das Gate braucht keinen Server
 """
 

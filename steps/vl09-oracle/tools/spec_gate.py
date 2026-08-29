@@ -1,21 +1,21 @@
-"""Konformitaets-Gate: prueft eine Implementierung gegen api/openapi.yaml.
+"""Konformitäts-Gate: prüft eine Implementierung gegen api/openapi.yaml.
 
     python3 tools/spec_gate.py api/app.py              # Referenz  -> soll 0 Befunde
     python3 tools/spec_gate.py api/drifted_server.py   # Drift     -> soll >=5 Befunde
 
-Kein Server, kein Import des Prueflings, keine Abhaengigkeiten: die
+Kein Server, kein Import des Prüflings, keine Abhängigkeiten: die
 Implementierung wird mit `ast` **statisch** gelesen. Ein kaputter oder
-boesartiger Server kann dieses Gate also nicht beeinflussen.
+bösartiger Server kann dieses Gate also nicht beeinflussen.
 
 Zwei-Seiten-Kriterium — beides muss gelten:
 
-    rot  auf api/drifted_server.py     (sonst prueft das Gate nichts)
-    gruen auf api/app.py               (sonst prueft es das Falsche)
+    rot  auf api/drifted_server.py    (sonst prüft das Gate nichts)
+    grün auf api/app.py               (sonst prüft es das Falsche)
 
 Ein Gate, das immer rot ist, ist von einem funktionierenden Gate nicht zu
 unterscheiden. Genau daran scheitert der erste Entwurf — mit Absicht.
 
-EURE AUFGABE: die fuenf TODOs unten. Alles andere ist Plumbing und fertig.
+EURE AUFGABE: die sechs TODOs unten. Alles andere ist Plumbing und fertig.
 """
 
 from __future__ import annotations
@@ -143,7 +143,7 @@ def _query_params(fn: ast.FunctionDef) -> set[str]:
 
     `request: Request` ist ein Framework-Objekt, kein Query-Parameter — es
     steht deshalb in NICHT_QUERY. Genau solche Ausnahmen sind der Grund,
-    warum ein naives Gate auf dem *korrekten* Server anschlaegt.
+    warum ein naives Gate auf dem *korrekten* Server anschlägt.
     """
     path_params: set[str] = set()
     for deco in fn.decorator_list:
@@ -177,9 +177,9 @@ def _raised_status_codes(fn: ast.FunctionDef, functions: dict, seen: set) -> set
     """Alle Statuscodes, die in dieser Funktion ODER in von ihr gerufenen
     modul-eigenen Hilfsfunktionen erhoben werden.
 
-    Die Rekursion ist der Grund, warum das Gate `api/app.py` gruen bekommt:
+    Die Rekursion ist der Grund, warum das Gate `api/app.py` grün bekommt:
     dort wirft `_require()` den 404, nicht der Handler selbst. Ohne
-    Aufrufverfolgung wuerde das Gate den KORREKTEN Server anschwaerzen.
+    Aufrufverfolgung würde das Gate den KORREKTEN Server anschwärzen.
     """
     if fn.name in seen:
         return set()
@@ -219,14 +219,19 @@ def response_fields(model_name: str | None, classes: dict) -> set[str] | None:
 # ---------------------------------------------------------------------------
 
 # Statuscodes, die FastAPI SELBST erzeugt: 400 bei nicht parsbarem Body, 422
-# bei Schema-Verletzung. Im Handler steht dafuer kein `raise` — sie hier zu
-# fordern wuerde den KORREKTEN Server anschwaerzen. Welche Codes die Anwendung
+# bei Schema-Verletzung. Im Handler steht dafür kein `raise` — sie hier zu
+# fordern würde den KORREKTEN Server anschwärzen. Welche Codes die Anwendung
 # besitzt und welche das Framework, muss man selbst entscheiden.
 FRAMEWORK_CODES = {400, 422}
 
-# Die Response-Felder aus components/schemas — hier VORLAEUFIG fest verdrahtet.
-# specyaml loest `$ref` nicht auf, deshalb steht das hier von Hand.
-# -> Vertiefung: aus spec["schemas"] herleiten und dieses dict loeschen.
+# Die Response-Felder aus components/schemas — hier VORLÄUFIG fest verdrahtet.
+# specyaml löst `$ref` nicht auf, deshalb steht das hier von Hand.
+#
+# -> Vertiefung: aus spec["schemas"] herleiten und dieses dict löschen.
+#    Achtung, dritte Falle: `GET /tickets` liefert ein ARRAY. Sobald ihr
+#    `$ref` auflöst, seht ihr auch `items.$ref -> Ticket` — und müsst auf
+#    der Implementierungsseite `list[Ticket]` entpacken. Sonst erklärt das
+#    Gate wieder den korrekten Server für kaputt.
 SPEC_RESPONSE_FIELDS = {
     "Ticket": {"id", "von", "betreff", "text", "erstellt"},
     "TriageErgebnis": {"id", "kategorie", "prioritaet"},
@@ -245,12 +250,12 @@ def gate(pyfile: Path) -> list[Befund]:
       3. STATUS  Der Erfolgs-Statuscode stimmt. Achtung: FastAPI-Default ist
                  200 — steht `status_code=` nicht am Dekorator, ist es 200.
       4. ERRCODE Jeder in der Spec deklarierte Fehlercode >= 400 ist im Handler
-                 erreichbar (nutzt `impl["ops"][key]["raised"]`) — ausser den
+                 erreichbar (nutzt `impl["ops"][key]["raised"]`) — außer den
                  FRAMEWORK_CODES, die FastAPI selbst erzeugt.
       5. QPARAM  Die Query-Parameter-Namen stimmen (Spec vs. Implementierung),
                  in beide Richtungen: fehlende UND unspezifizierte.
       6. SCHEMA  Die Feldnamen des Response-Modells stimmen mit
-                 SPEC_RESPONSE_FIELDS ueberein (nutzt `response_fields(...)`).
+                 SPEC_RESPONSE_FIELDS überein (nutzt `response_fields(...)`).
     """
     spec = spec_model()
     impl = impl_model(pyfile)
@@ -267,7 +272,9 @@ def gate(pyfile: Path) -> list[Befund]:
         # TODO 3 — STATUS: Erfolgscode vergleichen (Default 200 beachten).
         ...
 
-        # TODO 4 — ERRCODE: Spec-Fehlercodes >= 400 (ohne 422) erreichbar?
+        # TODO 4 — ERRCODE: Spec-Fehlercodes >= 400 erreichbar?
+        #          FRAMEWORK_CODES ausnehmen — sonst schlägt das Gate auf
+        #          api/app.py an, und zwar zu Recht nicht.
         ...
 
         # TODO 5 — QPARAM: Namen in beide Richtungen vergleichen.
@@ -291,7 +298,7 @@ def check_two_sided() -> int:
 
         python3 tools/spec_gate.py --check
 
-    Beides muss gelten. Ein Gate, das nur eine Seite erfuellt, ist nicht fertig.
+    Beides muss gelten. Ein Gate, das nur eine Seite erfüllt, ist nicht fertig.
     """
     referenz = gate(REPO / "api" / "app.py")
     drift = gate(REPO / "api" / "drifted_server.py")
@@ -299,11 +306,11 @@ def check_two_sided() -> int:
     ok_gruen = len(referenz) == 0
     ok_rot = len(drift) >= 5
 
-    print("Abnahme-Kriterium (beide Zeilen muessen OK sein):")
-    print(f"  gruen auf api/app.py            : {len(referenz)} Befund(e)  "
-          f"{'OK' if ok_gruen else 'FEHLT — das Gate prueft das Falsche'}")
+    print("Abnahme-Kriterium (beide Zeilen müssen OK sein):")
+    print(f"  grün auf api/app.py             : {len(referenz)} Befund(e)  "
+          f"{'OK' if ok_gruen else 'FEHLT — das Gate prüft das Falsche'}")
     print(f"  rot   auf api/drifted_server.py : {len(drift)} Befund(e)  "
-          f"{'OK' if ok_rot else 'FEHLT — das Gate prueft nichts'}")
+          f"{'OK' if ok_rot else 'FEHLT — das Gate prüft nichts'}")
     if not ok_gruen:
         print("\n  Falsch-Positive auf der Referenz:")
         for b in sorted(referenz, key=lambda x: (x.art, x.ort)):
@@ -314,10 +321,10 @@ def check_two_sided() -> int:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Spec-Konformitaets-Gate")
-    p.add_argument("pyfile", nargs="*", help="zu pruefende Implementierung(en)")
+    p = argparse.ArgumentParser(description="Spec-Konformitäts-Gate")
+    p.add_argument("pyfile", nargs="*", help="zu prüfende Implementierung(en)")
     p.add_argument("--check", action="store_true",
-                   help="Zwei-Seiten-Kriterium pruefen (app.py gruen, drifted rot)")
+                   help="Zwei-Seiten-Kriterium prüfen (app.py grün, drifted rot)")
     args = p.parse_args()
 
     if args.check:

@@ -1,7 +1,7 @@
-"""Tests fuer die regelbasierte Ticket-Triage.
+"""Tests für die regelbasierte Ticket-Triage.
 
-Diese Tests definieren das erwartete Verhalten. Sie muessen VOR und NACH
-jedem Refactoring gruen sein — egal ob Mensch oder KI den Code anfasst.
+Diese Tests definieren das erwartete Verhalten. Sie müssen VOR und NACH
+jedem Refactoring grün sein — egal ob Mensch oder KI den Code anfasst.
 """
 
 from src.triage import classify_and_prioritize, triage_all
@@ -13,21 +13,21 @@ def make_ticket(betreff, text):
 
 
 def test_hardware_ticket():
-    t = make_ticket("Laptop startet nicht", "Mein Laptop bleibt beim Boot haengen.")
+    t = make_ticket("Laptop startet nicht", "Mein Laptop bleibt beim Boot hängen.")
     kategorie, prioritaet = classify_and_prioritize(t)
     assert kategorie == "Hardware"
     assert prioritaet == "mittel"
 
 
 def test_netzwerk_ticket_hohe_prioritaet():
-    t = make_ticket("VPN down", "Das VPN faellt dauernd aus, Ausfall betrifft das ganze Team. Dringend!")
+    t = make_ticket("VPN down", "Das VPN fällt dauernd aus, Ausfall betrifft das ganze Team. Dringend!")
     kategorie, prioritaet = classify_and_prioritize(t)
     assert kategorie == "Netzwerk"
     assert prioritaet == "hoch"
 
 
 def test_zugang_vor_netzwerk():
-    # Reihenfolge der Regeln: Zugang wird vor Netzwerk geprueft.
+    # Reihenfolge der Regeln: Zugang wird vor Netzwerk geprüft.
     t = make_ticket("Kein Zugriff", "Ich habe keinen Zugriff auf das WLAN-Portal.")
     kategorie, _ = classify_and_prioritize(t)
     assert kategorie == "Zugang"
