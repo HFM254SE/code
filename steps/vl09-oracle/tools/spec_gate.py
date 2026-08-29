@@ -121,22 +121,35 @@ def impl_model(pyfile: Path) -> dict:
     return {"ops": ops, "classes": classes, "functions": functions}
 
 
-def _route_from_decorator(deco):
+def _route_from_decorator(deco: ast.expr) -> tuple[str, str, int | None, str | None] | None:
+    """(METHODE, Pfad, status_code, response_model) aus `@app.get("/x", ...)`.
+
+    None, sobald der Dekorator keine Route ist — das ist der Normalfall, denn
+    `decorator_list` enthält auch alles andere (@dataclass, @field_validator).
+    """
     if not isinstance(deco, ast.Call) or not isinstance(deco.func, ast.Attribute):
         return None
     method = deco.func.attr.lower()
     if method not in HTTP_METHODS:
         return None
-    if not deco.args or not isinstance(deco.args[0], ast.Constant):
+    if not deco.args:
         return None
-    path = deco.args[0].value
-    status, response_model = None, None
+    # Erst binden, dann prüfen: der Pfad muss ein String-Literal sein. Ein
+    # `@app.get(PFAD)` mit Variable ist für ein statisches Gate nicht lesbar.
+    pfad_knoten = deco.args[0]
+    if not isinstance(pfad_knoten, ast.Constant) or not isinstance(pfad_knoten.value, str):
+        return None
+    status: int | None = None
+    response_model: str | None = None
     for kw in deco.keywords:
-        if kw.arg == "status_code" and isinstance(kw.value, ast.Constant):
+        # `ast.Constant.value` ist alles, was ein Literal sein kann (str, None,
+        # Ellipsis ...). Ein Statuscode ist davon nur der int-Fall.
+        if (kw.arg == "status_code" and isinstance(kw.value, ast.Constant)
+                and isinstance(kw.value.value, int)):
             status = kw.value.value
         if kw.arg == "response_model":
             response_model = ast.unparse(kw.value)
-    return method.upper(), path, status, response_model
+    return method.upper(), pfad_knoten.value, status, response_model
 
 
 NICHT_QUERY = {"request", "self"}
@@ -194,7 +207,8 @@ def _raised_status_codes(fn: ast.FunctionDef, functions: dict, seen: set) -> set
             target = getattr(node.func, "id", None)
             if isinstance(node.func, ast.Name) and target == "HTTPException":
                 for kw in node.keywords:
-                    if kw.arg == "status_code" and isinstance(kw.value, ast.Constant):
+                    if (kw.arg == "status_code" and isinstance(kw.value, ast.Constant)
+                            and isinstance(kw.value.value, int)):
                         codes.add(kw.value.value)
             elif isinstance(node.func, ast.Name) and target in functions:
                 codes |= _raised_status_codes(functions[target], functions, seen)
