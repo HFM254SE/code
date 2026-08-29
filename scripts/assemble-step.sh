@@ -73,3 +73,4 @@ fi
 # 4. Cleanup
 rm -rf "$DEST/common"
 rm -rf "$DEST/scripts"
+rm -rf "$DEST/steps"
