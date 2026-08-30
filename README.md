@@ -36,7 +36,7 @@ git checkout vl05-rag-advanced-start              # VL 5: Startpunkt für die RA
 git checkout vl05-rag-advanced-solution           # VL 5: Musterlösung für VL 5
 git checkout vl06-guardrails                      # VL 6: Injection-Scanner + Output-Filter
 git checkout vl08-agent                           # VL 8: Tool-nutzender LangGraph-Agent
-git checkout vl09-spec                            # VL 9: OpenAPI-Spec + Drift-Prüfung
+git checkout vl09-oracle                          # VL 9: Mutation Testing + Spec Driven Development
 ```
 
 Jeder Branch ist **vollständig** (Code + Daten + Docs + Lab-Anleitung in

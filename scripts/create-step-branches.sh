@@ -9,7 +9,7 @@
 # Nutzung (nur durch Menschen, vgl. Corporate Policy):
 #   ./scripts/create-step-branches.sh
 #   git push -f origin vl01-start vl01-solution vl03-llm-client vl03-evaluation \
-#                      vl06-guardrails vl08-agent vl09-spec
+#                      vl06-guardrails vl08-agent vl09-oracle
 #
 # Idempotent: kann nach Änderungen an common/ oder steps/ erneut laufen
 # (Branches werden mit -f neu gesetzt).
@@ -50,4 +50,4 @@ git branch -D "$TMP_BRANCH"
 echo
 echo "Fertig. Veröffentlichen mit (vl04 = Svens RAG-WIP wird NICHT gepusht):"
 echo "  git push -f origin vl01-start vl01-solution vl03-llm-client vl03-evaluation \\"
-echo "                     vl06-guardrails vl08-agent vl09-spec"
+echo "                     vl06-guardrails vl08-agent vl09-oracle"
