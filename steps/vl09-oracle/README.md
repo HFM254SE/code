@@ -34,7 +34,7 @@ kein API-Key, kein Netz. Immer `python3`, immer aus dem Repo-Wurzelverzeichnis.
 
 ```bash
 python3 tools/mutation_dojo.py --suite shipped    # Mutation Score Teil 1
-python3 tools/mutation_dojo.py --aufgabe-e        # Unit-Test vs. Spec-Test
+python3 tools/mutation_dojo.py --bruecke          # Unit-Test vs. Spec-Test
 python3 tools/spec_gate.py --check                # Abnahme-Kriterium Teil 2
 ```
 

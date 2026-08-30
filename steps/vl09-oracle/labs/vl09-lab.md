@@ -59,8 +59,8 @@ python3 -m pytest tests/test_openapi_spec.py -q    # muss "4 passed" melden
 ## Teil 1 — Das Orakel (~30 min)
 
 [`src/triage.py`](../src/triage.py) ordnet Tickets per Keyword-Listen ein. 61 Zeilen, keine
-Verzweigungen, das ganze Verhalten steckt in zwei dicts. [`tests/test_triage.py`](../tests/test_triage.py)
-hat 5 Tests, alle grün.
+Verzweigungen über die Keywords: das ganze Verhalten steckt in zwei dicts.
+[`tests/test_triage.py`](../tests/test_triage.py) hat 5 Tests, alle grün.
 
 ### Aufgabe A — Schätzen, dann messen (~10 min)
 
@@ -82,10 +82,14 @@ python3 tools/mutation_dojo.py --suite shipped
 eliminiert werden `laptop`, `drucker`, `vpn`, `zugriff`.
 
 **Überlegt kurz:** Was haben genau diese vier gemeinsam? (Antwort: sie sind
-die einzigen Keywords, die wörtlich in den Texten der fünf Tests vorkommen.
-Die Keyword-Listen sind *Daten*, keine Verzweigungen — Coverage sieht sie
-beim Import als abgedeckt und kann ein geprüftes Keyword nicht von einem
-ungeprüften unterscheiden.)
+die einzigen Keywords, die für eine Assertion **allein entscheidend** sind.
+Wörtlich in den Testtexten stehen acht — aber `rechnung` und `kosten` teilen
+sich dasselbe Ticket und decken sich gegenseitig: löscht man eins, matcht das
+andere weiter. Und `wlan`/`lan` stehen in einem Ticket, dessen Assertion
+`Zugang` schon `zugriff` entscheidet (first match wins). Die Keyword-Listen
+sind *Daten*, keine Verzweigungen — Coverage sieht sie beim Import als
+abgedeckt und kann ein geprüftes Keyword nicht von einem ungeprüften
+unterscheiden.)
 
 > In der Vorlesung lief dieselbe Messung mit `--scope all`: 45 Mutanten,
 > anderer Nenner, anderer Score — Score ohne Mutantenklasse ist bedeutungslos.
@@ -144,7 +148,7 @@ TODO 1, nur besser getarnt.
 Löscht nicht ein Keyword, sondern den **Schlüssel** `"Software"`:
 
 ```bash
-python3 tools/mutation_dojo.py --aufgabe-e
+python3 tools/mutation_dojo.py --bruecke
 ```
 
 [`tests/test_triage.py`](../tests/test_triage.py) bleibt **grün (5/5)** — `DEFAULT_CATEGORY` fängt alles
@@ -231,10 +235,13 @@ Vorlesung ein menschlicher Prüfpunkt, hier auch. Checkliste gegen den Entwurf:
   404 (der Endpunkt hat keinen Pfad-Parameter).
 - [ ] **Die Regel, die der Agent nicht erraten kann:** Auch eine Kategorie
   mit **0 Tickets** muss als Schlüssel in der Antwort stehen — sonst kann
-  kein Dashboard sie anzeigen. Kodiert wird das über `required`: `gesamt`
-  (integer) plus **alle fünf** Kategorien und **alle drei** Prioritäten als
-  Pflichtfelder (integer, `minimum: 0`). **Diese Geschäftsregel stand nicht
-  im Feature-Wunsch — sie kommt von euch.** Lasst den Agenten nachbessern.
+  kein Dashboard sie anzeigen. Die Form: `StatistikReport` hat **genau drei
+  Top-Level-Felder** — `gesamt` (integer), `kategorien` (object),
+  `prioritaeten` (object). Kodiert wird die Regel über `required` in den
+  beiden Unterobjekten: **alle fünf** Kategorie-Namen in `kategorien` und
+  **alle drei** Prioritäts-Namen in `prioritaeten`, jeweils als Pflichtfeld
+  (integer, `minimum: 0`). **Diese Geschäftsregel stand nicht im
+  Feature-Wunsch — sie kommt von euch.** Lasst den Agenten nachbessern.
 
 > Die fünf Kategorie-Namen stehen damit zweimal in der Spec (Enum + Schema).
 > Das ist dieselbe Entscheidung wie `FROZEN` in Aufgabe C — Duplikation
@@ -332,8 +339,13 @@ python3 tools/spec_gate.py --check
 > `SPEC_RESPONSE_FIELDS` in [`tools/spec_gate.py`](../tools/spec_gate.py) — und Schemas, die dort
 > nicht eingetragen sind, prüft es **stumm gar nicht**. Tragt
 > `"StatistikReport": {"gesamt", "kategorien", "prioritaeten"}` nach und lauft
-> erneut. Ein von Hand gepflegtes Orakel ignoriert, was es nicht kennt —
-> lautlos. (Die Kür, die das dict ganz abschafft: **Für zu Hause**.)
+> erneut. **Die Zahlen bewegen sich dabei nicht** — eine korrekte
+> Implementierung besteht mit und ohne Eintrag. Dass der Eintrag trotzdem
+> etwas tut, beweist ihr in zwei Zeilen: benennt im Pydantic-Modell `gesamt`
+> testweise in `total` um → jetzt meldet das Gate einen SCHEMA-Befund, wo es
+> vorher geschwiegen hätte. Dann zurückbenennen. Ein von Hand gepflegtes
+> Orakel ignoriert, was es nicht kennt — lautlos. (Die Kür, die das dict
+> ganz abschafft: **Für zu Hause**.)
 
 **2. Die Offline-Tests** (Spec self-consistent, Triage unangetastet):
 
@@ -349,7 +361,7 @@ python3 -m uvicorn api.app:app &          # Terminal 1 (oder eigenes Fenster)
 schemathesis run api/openapi.yaml --url http://localhost:8000 --checks all
 ```
 
-**Zwei Befunde, die hier regelmäßig auftreten — beide für das statische Gate
+**Zwei Befunde, die euch hier begegnen können — beide für das statische Gate
 unsichtbar:**
 
 - **404 auf `GET /tickets/stats`, obwohl der Code richtig aussieht:** FastAPI
@@ -359,10 +371,15 @@ unsichtbar:**
   ist Laufzeitverhalten.** Fix: Handler vor `get_ticket` verschieben.
 - **Schema-Verletzung, wenn eine Kategorie 0 Tickets hat:** Wer das Ergebnis
   aus einem `Counter` baut, ohne über alle Kategorien zu iterieren, lässt
-  Null-Schlüssel weg. Die Spec verlangt sie — das ist das `required` aus
-  **eurem** Review in Aufgabe D. Das Gate vergleicht nur Feld-*Namen* des
-  Pydantic-Modells, nie Werte zur Laufzeit; ohne euer Review würde hier
-  **kein** Prüfer anschlagen.
+  Null-Schlüssel weg. Mit den ausgelieferten 30 Tickets fällt das **nicht**
+  auf — sie decken zufällig jede Kategorie und jede Priorität ab. Provoziert
+  den Fall deshalb gezielt: setzt die Befüllung von `_STORE` in
+  [`api/app.py`](../api/app.py) testweise auf `{}` (die Zeile mit
+  `load_tickets()`), startet den Server neu, ruft `GET /tickets/stats` ab —
+  und macht die Änderung danach rückgängig. Die Spec verlangt die
+  Null-Schlüssel — das ist das `required` aus **eurem** Review in Aufgabe D.
+  Das Gate vergleicht nur Feld-*Namen* des Pydantic-Modells, nie Werte zur
+  Laufzeit; ohne euer Review würde hier **kein** Prüfer anschlagen.
 
 Wenn alle drei Prüfer grün sind, ist das Feature **bewiesen konform** — nicht
 „sieht gut aus", nicht „lief bei mir". Das ist der Unterschied zwischen
