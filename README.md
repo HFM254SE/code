@@ -1,62 +1,64 @@
-# FHDW — Code zur Vorlesung Automatisierung im Software Engineering (Q3 2026) 
+# LeineTech Ticket-Triage — `vl09-oracle`
 
-Hands-on **Lab-Code**
+Ausgangszustand des **Labs in VL 9**: Testorakel und Spec-Driven Development
+am eigenen Projekt. Erst messt ihr, wie wenig eine grüne Test-Suite prüft,
+wenn ihre Erwartung aus dem Prüflings-Code stammt. Danach baut ihr ein Gate,
+das eine Implementierung maschinell gegen [`api/openapi.yaml`](api/openapi.yaml) prüft — die
+einzige Erwartung in diesem Repo, die außerhalb des Codes liegt, den sie
+beurteilt.
 
-## Das Kursprojekt: LeineTech Ticket-Triage („roter Faden")
+Das Lab-Sheet ist [`labs/vl09-lab.md`](labs/vl09-lab.md). Anfangen bitte dort.
 
-Über alle Vorlesungen hinweg wird am gleichen System gearbeitet: dem
-internen **Support-Ticket-System der LeineTech GmbH** (fiktiver IT-Dienstleister,
-Hannover, ~200 Mitarbeitende).
+Neu gegenüber `vl08-agent`:
 
-| VL | Erweiterung | Schwerpunkt |
-|----|-------------|-------------|
-| 1 | Bestehendes Triage-Tool verbessern | pylint, flake8, Trivy, VS Code + Continue.dev (HomeCloud) |
-| 2 | Tickets per Prompt klassifizieren (Browser, ohne Code) | Zero-/Few-Shot, CoT |
-| 3 | LLM-Anschluss über den Kurs-Endpunkt + Evaluierung | HomeCloud (litellm), Golden Dataset |
-| 4–5 | RAG-Chatbot über die LeineTech-Knowledge-Base (`docs/`) | ChromaDB, Embeddings (Sven, in Arbeit) |
-| 6 | Das eigene System angreifen und absichern | Prompt Injection, Guardrails |
-| 7–8 | Triage zum Tool-nutzenden Agenten ausbauen | LangGraph, MCP |
-| 9 | Spec-Driven Development am Projekt | OpenAPI, CLAUDE.md |
-| 10 | Fallstudie: Einordnung nach EU AI Act | — |
+- [`api/openapi.yaml`](api/openapi.yaml) — OpenAPI-3.1-Spec der LeineTech Ticket-API
+  (Tickets auflisten/anlegen/lesen, `triage`, `escalate`). **Single Source
+  of Truth.**
+- [`api/app.py`](api/app.py) — Referenz-Server (FastAPI), exakt spec-konform.
+- [`api/drifted_server.py`](api/drifted_server.py) — weicht **absichtlich** ab, mit sechs Drifts, die
+  im Lab-Sheet offen aufgelistet sind. Zielscheibe für Teil 2. Die Aufgabe
+  ist nicht, die Abweichungen zu finden, sondern das Gate, das sie findet.
+- [`tools/specyaml.py`](tools/specyaml.py) — YAML-Leser aus der Standardbibliothek (kein PyYAML).
+  Löst bewusst **kein `$ref`** auf — das wird in der Vertiefung zum Thema.
+- [`tools/spec_gate.py`](tools/spec_gate.py) — Gerüst für das Konformitäts-Gate, sechs TODOs.
+- [`tools/mutation_dojo.py`](tools/mutation_dojo.py) — Mutation-Testing für [`src/triage.py`](src/triage.py), misst die
+  Suiten aus `tests/`. Enthält selbst keine Tests und keine Erwartungen.
+- [`tests/test_triage_oracle.py`](tests/test_triage_oracle.py) — Gerüst für Teil 1, drei TODOs.
+- [`tests/test_openapi_spec.py`](tests/test_openapi_spec.py) — offline: Spec self-consistent + Kategorie-Enum
+  passt zu den Triage-Regeln (genau die Art Check, die Drift verhindert).
 
+## Ausführen
 
-## Checkpoint-Branches
+Das Lab braucht **keine Installation**: reine Standardbibliothek, kein Server,
+kein API-Key, kein Netz. Immer `python3`, immer aus dem Repo-Wurzelverzeichnis.
 
-Jeder Lab-Zustand ist ein Branch — wer hängen bleibt oder eine Session
-verpasst, steigt einfach wieder ein:
-
-```
-git checkout vl01-start                           # VL 1: das "schlechte" Tool (Lab-Start)
-git checkout vl01-solution                        # VL 1: Musterlösung = Start für VL 3
-git checkout vl03-llm-client                      # VL 3: LLM-Anschluss über den Kurs-Endpunkt fertig
-git checkout vl03-evaluation                      # VL 3: Evaluierung Regeln vs. LLM fertig
-git checkout vl04-rag-ingestion-pipeline-start    # VL 4: Startpunkt für das RAG Ingestion Pipeline Lab
-git checkout vl04-rag-ingestion-pipeline-solution # VL 4: Musterlösung für VL 4
-git checkout vl05-rag-advanced-start              # VL 5: Startpunkt für die RAG Advanced Lab
-git checkout vl05-rag-advanced-solution           # VL 5: Musterlösung für VL 5
-git checkout vl06-guardrails                      # VL 6: Injection-Scanner + Output-Filter
-git checkout vl08-agent                           # VL 8: Tool-nutzender LangGraph-Agent
-git checkout vl09-oracle                          # VL 9: Mutation Testing + Spec Driven Development
-```
-
-Jeder Branch ist **vollständig** (Code + Daten + Docs + Lab-Anleitung in
-`labs/`) und die Anleitungen funktionieren auch ohne Vorlesung zum Nacharbeiten.
-(VL 2, 7, 10 haben keinen eigenen Code-Branch: VL 2 ist browserbasiert,
-VL 7 und 10 sind Theorie/Fallstudie. **VL 4/5 (RAG, Sven):** Der Lab-Code
-liegt in den Branches `vl04-rag-ingestion-pipeline-start` (Lab-Start) und
-`vl04-rag-ingestion-pipeline-solution` (Musterlösung = Start für VL 5) und
-baut auf `vl03-evaluation` auf; die Anleitung steht in `labs/vl04-lab.md`.
-Die Folien liegen im separaten `slides`-Repo.)
-
-## Inhalt eines Checkpoints
-
-```
-data/tickets.json    30 Support-Tickets der LeineTech GmbH (Mai 2026)
-docs/                Knowledge-Base der LeineTech-IT (8 Artikel) → RAG-Korpus ab VL 4
-eval/golden.jsonl    Menschliche Soll-Labels für alle 30 Tickets
-src/                 Das Triage-Tool im jeweiligen Ausbauzustand
-tests/               pytest — Sicherheitsnetz bei (KI-)Refactorings
-labs/                Schritt-für-Schritt-Lab-Anleitungen
-SETUP.md             Kurs-LLM-Endpunkt (Nirk HomeCloud) + Groq-Fallback einrichten
+```bash
+python3 tools/mutation_dojo.py --suite shipped    # Mutation Score Teil 1
+python3 tools/mutation_dojo.py --bruecke          # Unit-Test vs. Spec-Test
+python3 tools/spec_gate.py --check                # Abnahme-Kriterium Teil 2
 ```
 
+Alles Weitere — inklusive der Reihenfolge — steht in [`labs/vl09-lab.md`](labs/vl09-lab.md).
+
+### Optional, außerhalb des Labs
+
+Die Server laufen zu sehen ist nicht Teil der Aufgabe; das Gate arbeitet rein
+statisch und braucht keinen laufenden Prozess. Wer trotzdem mag und eine
+Umgebung mit den Abhängigkeiten aus [`requirements.txt`](requirements.txt) hat:
+
+```bash
+python3 -m uvicorn api.app:app --reload                # Referenz  -> :8000/docs
+python3 -m uvicorn api.drifted_server:app --port 8001  # driftet absichtlich
+
+# Contract-Testing gegen den LAUFENDEN Server — findet Laufzeitverhalten,
+# das ein statisches Gate strukturell nicht sehen kann (Teil 3, Leitfrage 2):
+schemathesis run api/openapi.yaml --url http://localhost:8001 --checks all
+```
+
+**Diskussionsstoff:** Wann ist DRY beim Testen falsch? Warum ist ein Mutation
+Score ohne Angabe der Mutantenklasse bedeutungslos? Was findet ein statisches
+Gate, was ein Contract Test nicht findet — und umgekehrt?
+
+> Damit ist der Code-Bogen des Kurses komplett: messy Tool (VL 1) → LLM
+> (VL 3) → RAG-Korpus (VL 4/5) → gehärtet (VL 6) → Agent (VL 8) → spezifiziert
+> (VL 9). VL 10 ordnet das Ganze in EU AI Act & Ethik ein.
