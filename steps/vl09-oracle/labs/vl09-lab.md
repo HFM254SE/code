@@ -217,9 +217,9 @@ jeder Kategorie und jeder Priorität liegen, um Engpässe zu erkennen."
 
 Entwirf NUR die Änderung an api/openapi.yaml — noch keinen Code:
 ein neuer GET-Endpunkt /tickets/stats. Übernimm Stil und Konventionen
-der bestehenden Spec (operationId, tags, $ref auf ein Schema unter
-components). Zeige das YAML als Entwurf und begründe jede Entscheidung
-in einem Satz. Ändere noch keine Datei.
+der bestehenden Spec (operationId, tags, $ref auf ein Schema namens
+StatistikReport unter components). Zeige das YAML als Entwurf und
+begründe jede Entscheidung in einem Satz. Ändere noch keine Datei.
 ```
 
 **Jetzt seid ihr das Review-Gate** — der Übergang Specify → Plan ist in der
@@ -268,6 +268,10 @@ python3 tools/spec_gate.py api/app.py             # genau 1 Befund:
 
 Der eine rote Befund ist der Punkt von Spec-first: **das Gate ist jetzt die
 Aufgabenbeschreibung.** Rot beginnt beim Gate, nicht beim Bugreport.
+
+> `--check` ist zwischen Aufgabe D und E absichtlich rot („NICHT BESTANDEN") —
+> es misst das Endergebnis, nicht den Zwischenstand. Der Einzelaufruf oben ist
+> hier die richtige Messung.
 
 ### Aufgabe E — Plan reviewen, dann implementieren lassen (~15 min)
 
@@ -369,6 +373,10 @@ unsichtbar:**
   `GET /tickets/{ticket_id}`, fängt der Platzhalter „stats" als `ticket_id`
   ab. Das Gate sieht beide Routen im `ast` und ist zufrieden — **Reihenfolge
   ist Laufzeitverhalten.** Fix: Handler vor `get_ticket` verschieben.
+  Hat euer Agent die Position von sich aus richtig gewählt: provoziert den
+  Fall trotzdem einmal — schiebt den Handler testweise *hinter* `get_ticket`,
+  startet den Server neu, beobachtet den 404 bei weiterhin grünem Gate, und
+  schiebt ihn zurück.
 - **Schema-Verletzung, wenn eine Kategorie 0 Tickets hat:** Wer das Ergebnis
   aus einem `Counter` baut, ohne über alle Kategorien zu iterieren, lässt
   Null-Schlüssel weg. Mit den ausgelieferten 30 Tickets fällt das **nicht**
@@ -450,7 +458,7 @@ Jede/r nennt im Chat **zwei Zahlen und einen Satz**:
 | `--suite oracle` meldet „TODO 1 ist noch nicht gefüllt" | der Rumpf von `test_jedes_keyword_trifft_seine_kategorie()` ist noch `...` — oder die Funktion wurde umbenannt. Der Dojo sucht sie namentlich |
 | `--suite frozen` meldet „FROZEN ist leer" | TODO 2 trägt die Tabelle ein — als ausgeschriebenes Literal, nicht aus `CATEGORY_KEYWORDS` abgeleitet |
 | `--suite ...` meldet „schon auf dem INTAKTEN Modul rot" | der Test ist falsch gefüllt. Erst reparieren: ein Score auf roter Suite ist bedeutungslos |
-| opencode: erste Antwort hängt minutenlang | Cold Start (200–300 s) — deshalb der Weck-Request in Schritt 0. Warten, nicht abbrechen |
+| opencode: erste Antwort hängt minutenlang | Cold Start (200–300 s). Warten, nicht abbrechen |
 | opencode: 401 / „unauthorized" | `apiKey` in `~/.config/opencode/opencode.json` prüfen ([`SETUP.md`](../SETUP.md)) |
 | opencode ändert Dateien, obwohl ihr nur einen Entwurf wolltet | in den **Plan-Modus** wechseln (Tab schaltet Build/Plan um) und „Ändere noch keine Datei" in den Prompt schreiben |
 | 403, „nur montags 06:00–23:59 …" | außerhalb des HomeCloud-Zeitfensters — kein Bug, montags wiederkommen |
