@@ -8,7 +8,7 @@ außer CPython:
     python3 tools/mutation_dojo.py --suite frozen
     python3 tools/mutation_dojo.py --equivalence Netzwerk:wlan
     python3 tools/mutation_dojo.py --list
-    python3 tools/mutation_dojo.py --aufgabe-e
+    python3 tools/mutation_dojo.py --bruecke
     python3 tools/mutation_dojo.py --tests tests/test_triage_oracle.py
 
 Mutantenklasse: **ein Keyword aus einer Liste löschen**. Warum diese und
@@ -360,8 +360,9 @@ def cmd_tests(pfad: Path) -> None:
         print("  damit genau nichts. Am Ergebnis allein ist das nicht zu sehen.")
 
 
-def cmd_aufgabe_e() -> None:
-    """Aufgabe E: nicht ein Keyword löschen, sondern den SCHLÜSSEL 'Software'.
+def cmd_bruecke() -> None:
+    """Brücke zu Teil 2: nicht ein Keyword löschen, sondern den SCHLÜSSEL
+    'Software'. (In der Vorlesung lief das als Aufgabe E — daher der Alias.)
 
     Zeigt ohne pytest, was das Lab behauptet: die Unit-Tests bleiben grün,
     der Spec-Test wird rot. Der Unterschied ist nicht die Sorgfalt der Tests,
@@ -380,7 +381,7 @@ def cmd_aufgabe_e() -> None:
             for f in fails:
                 print(f"      fehlgeschlagen: {f}")
 
-    print("Aufgabe E — Mutant: der SCHLÜSSEL 'Software' fällt aus "
+    print("Brücke zu Teil 2 — Mutant: der SCHLÜSSEL 'Software' fällt aus "
           "CATEGORY_KEYWORDS.")
     print("(im Speicher, keine Datei wird verändert)")
     print()
@@ -405,7 +406,7 @@ def main() -> None:
     p.add_argument("--equivalence", metavar="Zeile:keyword",
                    help="unterscheidende Eingabe für einen Mutanten suchen")
     p.add_argument("--list", action="store_true", help="Mutanten auflisten")
-    p.add_argument("--aufgabe-e", action="store_true",
+    p.add_argument("--bruecke", "--aufgabe-e", action="store_true",
                    help="Schlüssel 'Software' löschen und beide Testdateien laufen lassen")
     p.add_argument("--tests", metavar="DATEI",
                    help="eine Testdatei einmal laufen lassen (ohne pytest, ohne Mutant)")
@@ -417,8 +418,8 @@ def main() -> None:
         cmd_list(args.scope)
     elif args.equivalence:
         cmd_equivalence(args.equivalence)
-    elif args.aufgabe_e:
-        cmd_aufgabe_e()
+    elif args.bruecke:
+        cmd_bruecke()
     elif args.suite:
         run_suite(args.suite, args.scope)
     else:
