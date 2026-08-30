@@ -182,7 +182,7 @@ Dateiname exakt `config.yaml` (nicht `.yml`).
       "npm": "@ai-sdk/openai-compatible",
       "options": { "baseURL": "https://llm.homecloud.ee/v1", "apiKey": "<euer-key>" },
       "models": {
-        "qwen3.6-35B-A3B-FP8": { "limit": { "context": 131072 } }
+        "qwen3.6-35B-A3B-FP8": { "limit": { "context": 131072, "output": 8192 } }
       }
     }
   }
