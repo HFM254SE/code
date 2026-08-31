@@ -381,13 +381,18 @@ unsichtbar:**
   aus einem `Counter` baut, ohne über alle Kategorien zu iterieren, lässt
   Null-Schlüssel weg. Mit den ausgelieferten 30 Tickets fällt das **nicht**
   auf — sie decken zufällig jede Kategorie und jede Priorität ab. Provoziert
-  den Fall deshalb gezielt: setzt die Befüllung von `_STORE` in
-  [`api/app.py`](../api/app.py) testweise auf `{}` (die Zeile mit
-  `load_tickets()`), startet den Server neu, ruft `GET /tickets/stats` ab —
-  und macht die Änderung danach rückgängig. Die Spec verlangt die
-  Null-Schlüssel — das ist das `required` aus **eurem** Review in Aufgabe D.
-  Das Gate vergleicht nur Feld-*Namen* des Pydantic-Modells, nie Werte zur
-  Laufzeit; ohne euer Review würde hier **kein** Prüfer anschlagen.
+  den Fall deshalb gezielt, in zwei Schritten: **(1)** setzt die Befüllung
+  von `_STORE` in [`api/app.py`](../api/app.py) testweise auf `{}` (die Zeile
+  mit `load_tickets()`), startet den Server neu, ruft `GET /tickets/stats`
+  ab. Eine korrekte Implementierung liefert weiterhin **alle acht Schlüssel**
+  mit Wert 0 — das ist euer `required` aus Aufgabe D bei der Arbeit.
+  **(2)** Jetzt brecht sie absichtlich: ersetzt im Handler die Iteration
+  über alle Kategorien durch die nackten Counter-Ergebnisse (`dict(...)`),
+  startet den Server neu — Schemathesis meldet `Response violates schema`,
+  das Gate bleibt bei 0 Befunden. Macht danach **beide** Änderungen
+  rückgängig. Das Gate vergleicht nur Feld-*Namen* des Pydantic-Modells,
+  nie Werte zur Laufzeit; ohne euer Review würde hier **kein** Prüfer
+  anschlagen.
 
 Wenn alle drei Prüfer grün sind, ist das Feature **bewiesen konform** — nicht
 „sieht gut aus", nicht „lief bei mir". Das ist der Unterschied zwischen
