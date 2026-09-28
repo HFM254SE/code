@@ -214,8 +214,8 @@ components:
         von:
           type: string
           format: email
-          # format: email allein ist zweideutig (IDN-Domains? Quoting?) —
-          # das Pattern macht die Erwartung für alle Implementierungen exakt.
+          # format: email allein ist zweideutig (IDN-Domains? Quoting?).
+          # Das Pattern macht die Erwartung für alle Implementierungen exakt.
           pattern: "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
         betreff:
           type: string
@@ -251,8 +251,8 @@ components:
         detail:
           type: string
     # FastAPI/Pydantic-Validierungsfehler: detail ist hier ein ARRAY von
-    # Einzelfehlern — nicht derselbe Shape wie "Fehler"! Genau solche Details
-    # vergisst man leicht in der Spec (und schemathesis findet sie sofort).
+    # Einzelfehlern, nicht derselbe Shape wie "Fehler". Genau solche Details
+    # vergisst man leicht in der Spec, und Schemathesis findet sie sofort.
     ValidierungsFehler:
       type: object
       required: [detail]

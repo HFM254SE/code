@@ -1,35 +1,34 @@
-# LeineTech Ticket-Triage — `vl04-rag-ingestion-pipeline-solution`
+# LeineTech Ticket-Triage: `vl04-rag-ingestion-pipeline-solution`
 
-**Musterlösung** nach dem Lab in **VL 4 (RAG: Ingestion-Pipeline)** — und
-zugleich der **Startpunkt für VL 5**. Aus den 8 Markdown-Artikeln der
+**Musterlösung** nach dem Lab in **VL 4 (RAG: Ingestion-Pipeline)**. Das VL-5-Lab startet auf
+`vl05-rag-advanced-start`, das auf diesem Stand aufbaut. Aus den 8 Markdown-Artikeln der
 LeineTech-Wissensbasis (`docs/`) wird ein durchsuchbarer Vektor-Index.
 
 Neu gegenüber `vl04-rag-ingestion-pipeline-start` (im Lab gebaut):
 
-- `src/loader.py` — lädt die `.md`-Dokumente in ein einheitliches Format.
-- `src/chunker.py` — **rekursives Chunking** (Absätze → Zeilen → Sätze) mit
-  Überlappung und stabilen `chunk_id`s.
-- `src/embedder.py` — Embeddings mit `qwen3-embed-4b` (2560 Dim.) über den
-  **Kurs-Endpunkt (HomeCloud)**, via litellm — dieselbe Anbindung wie der Chat.
-- `src/vectorstore.py` — persistente **ChromaDB**-Collection unter `./chroma_db`
-  (idempotentes `upsert`).
-- `src/ingest.py` — verbindet alles zur Pipeline **Dokumente → Chunks →
-  Embeddings → ChromaDB**.
-- `src/search.py` — semantische Suche + Keyword-Baseline zum Vergleich.
+| Modul | Aufgabe |
+|---|---|
+| `src/loader.py` | lädt die `.md`-Dokumente in ein einheitliches Format |
+| `src/chunker.py` | rekursives Chunking (Absätze → Zeilen → Sätze) mit Überlappung ab einer Wortgrenze und stabilen `chunk_id`s |
+| `src/embedder.py` | Embeddings mit `qwen3-embed-4b` (2560 Dimensionen) über den Kurs-Endpunkt, via litellm |
+| `src/vectorstore.py` | persistente ChromaDB-Collection unter `./chroma_db` (`upsert`, Telemetrie aus) |
+| `src/ingest.py` | Pipeline Dokumente → Chunks → Embeddings → ChromaDB, entfernt veraltete Chunks, Probelauf mit `--dry-run` |
+| `src/search.py` | semantische Suche und Keyword-Baseline zum Vergleich, Treffer mit `chunk_id` |
 
-Embeddings laufen — wie Chat/Klassifikation (`src/llm.py`, VL 3) — über den
-Kurs-Endpunkt. Es braucht also `LLM_BASE_URL` / `LLM_API_KEY` in der Umgebung
-(siehe SETUP.md); der Endpunkt ist nur montags verfügbar und hat Cold Starts.
+Embeddings laufen wie der Chat aus VL 3 über den Kurs-Endpunkt. Dafür braucht es `LLM_BASE_URL` und
+`LLM_API_KEY` in der Umgebung (siehe `SETUP.md`). Der Endpunkt ist nur montags verfügbar und hat
+Cold Starts.
 
 ## Pipeline füllen
 
 ```bash
 export LLM_BASE_URL="https://llm.homecloud.ee/v1"
 export LLM_API_KEY="<euer-key>"      # siehe SETUP.md
+python -m src.ingest docs --dry-run  # nur laden und chunken, ohne Endpunkt
 python -m src.ingest docs
 ```
 
-Erwartete Ausgabe (ungefähr):
+Erwartete Ausgabe von `python -m src.ingest docs`:
 
 ```
 8 Dokumente geladen
@@ -38,8 +37,15 @@ Erwartete Ausgabe (ungefähr):
 Collection 'leinetech_kb': 80 Einträge gespeichert
 ```
 
-*(Die genaue Chunk-Zahl hängt von `--chunk-size`/`--chunk-overlap` ab —
-mit den Defaults 500/50 sind es ~80.)*
+Die Chunk-Zahl hängt von `--chunk-size` und `--chunk-overlap` ab (Default 500 und 50 Zeichen).
+Vor dem Speichern löscht die Pipeline alle alten Chunks der geladenen Quellen. So bleiben nach
+einem Wechsel der Chunk-Größe keine veralteten Chunks liegen. Für Vergleiche mit anderer
+Chunk-Größe eignet sich eine eigene Collection:
+
+```bash
+python -m src.ingest docs --chunk-size 1000 --collection leinetech_kb_1000
+python -m src.search "VPN geht nicht" --collection leinetech_kb_1000
+```
 
 ## Suchen
 
@@ -49,34 +55,41 @@ python -m src.search "Mein Passwort ist abgelaufen" --mode keyword
 python -m src.search "Drucker druckt nicht" --n 3
 ```
 
-Pro Treffer: **Rang, Ähnlichkeitswert, Quelle, Textvorschau**. Der `keyword`-Modus
-(reine Wortüberlappung) dient dem Vergleich — er gewinnt bei exakten Fachbegriffen,
-verliert bei Synonymen und Umschreibungen.
+Pro Treffer: Rang, Score, `chunk_id` und Textvorschau. Im Modus `embedding` ist der Score die
+Kosinus-Ähnlichkeit, im Modus `keyword` die Anzahl gemeinsamer Wörter. Die Keyword-Suche dient dem
+Vergleich. Sie findet exakte Begriffe und IDs wie `0x80042109` oder `LT-PRN-02`, kennt aber keine
+Synonyme.
 
 ## Embedding-Modell
 
-Fest verdrahtet ist `qwen3-embed-4b` (2560 Dim.), das einzige Embedding-Modell
-des Kurs-Endpunkts. Überschreiben nur zu Testzwecken mit `EMBEDDING_MODEL`:
+Fest eingestellt ist `qwen3-embed-4b` (2560 Dimensionen), das Embedding-Modell des Kurs-Endpunkts.
+Überschreiben lässt es sich nur zu Testzwecken mit `EMBEDDING_MODEL`:
 
 ```bash
-EMBEDDING_MODEL=<anderes-modell> python -m src.ingest docs
+EMBEDDING_MODEL=<anderes-modell> python -m src.ingest docs --collection leinetech_kb_test
 ```
 
-> **Gleiches-Modell-Regel:** Query und Chunks müssen mit demselben Modell
-> eingebettet werden — sonst liegen die Vektoren in unterschiedlichen Räumen
-> (oder haben nicht mal dieselbe Dimension) und die Suche wird zu Rauschen. Wer
-> `EMBEDDING_MODEL` wechselt, muss die Collection neu indexieren: `chroma_db/`
-> löschen und `python -m src.ingest docs` erneut ausführen.
+> **Gleiches-Modell-Regel:** Fragen und Chunks müssen mit demselben Modell eingebettet werden.
+> Sonst liegen die Vektoren in verschiedenen Räumen oder haben nicht einmal dieselbe Dimension, und
+> die Suche liefert Rauschen. Wer das Modell wechselt, indexiert neu: in eine eigene Collection
+> oder nach dem Löschen von `chroma_db/`.
 
 ## Tests
 
 ```bash
-pytest                      # Loader/Chunker (offline, kein Netz/Endpunkt nötig)
+python -m pytest -q          # 33 passed, offline, ohne Netz und ohne Key
 ```
 
-Die Tests decken Laden und Chunking ab — die netzabhängigen Schritte (Embedding
-über HomeCloud, ChromaDB) werden im Lab manuell geprüft (siehe `labs/vl04-lab.md`).
+- `tests/test_chunker.py`: Loader und Chunker (Satzpunkte, Zeilenstruktur, Überlappung ab Wortgrenze).
+- `tests/test_pipeline_offline.py`: Embedder, Vektordatenbank, Pipeline und Suche. Eine
+  Attrappe ersetzt das Embedding-Modell, ChromaDB läuft in einem temporären Ordner. Geprüft werden
+  unter anderem die Reihenfolge der Vektoren, `upsert` bei vorhandener `chunk_id`, veraltete Chunks
+  nach einem Größenwechsel, ein Endpunktausfall ohne Datenverlust und die Umrechnung der Distanz in
+  die Kosinus-Ähnlichkeit.
+- `tests/test_triage.py`: die Triage aus VL 1.
 
-> Hier endet der VL-4-Stand. In VL 5 kommt der **Augment + Generate**-Schritt
-> dazu: Die hier indexierten Chunks werden dem LLM als Kontext übergeben — aus
-> der Suche wird ein RAG-Chatbot.
+Ob der echte Endpunkt normierte Vektoren mit 2560 Dimensionen liefert, prüft der Live-Check in
+`labs/vl04-lab.md` (Teil 2A).
+
+> Hier endet der VL-4-Stand. In VL 5 kommen Augment und Generate dazu: Die hier indexierten Chunks
+> gehen mit der Frage an das LLM, und aus der Suche wird ein RAG-Client.

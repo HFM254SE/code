@@ -1,12 +1,15 @@
-"""Datengetriebene Tests für die Triage-Keywords — GERÜST, drei TODOs.
+"""Datengetriebene Tests für die Triage-Keywords. GERÜST mit drei TODOs.
 
-Wird in Teil 1 des Labs gemeinsam gefüllt. Absichtlich eine schlichte
-Schleife statt `@pytest.mark.parametrize`: so läuft dieselbe Datei unter
-pytest UND unter tools/mutation_dojo.py. Der Dojo führt genau die Tests
-aus, die ihr hier schreibt — er hat keine eigene Kopie davon.
+Wird in Teil 1 des Labs gefüllt. Absichtlich eine schlichte Schleife statt
+`@pytest.mark.parametrize`: So läuft dieselbe Datei unter pytest UND unter
+tools/mutation_dojo.py. Der Dojo führt genau die Tests aus, die ihr hier
+schreibt. Er hat keine eigene Kopie davon.
 
-Deshalb: **die drei Funktionsnamen bitte nicht umbenennen.** Der Dojo
-sucht sie namentlich; ein umbenannter Test gilt ihm als ungefüllt.
+Deshalb: **die drei Funktionsnamen bitte nicht umbenennen.** Der Dojo sucht
+sie namentlich. Ein umbenannter Test gilt ihm als ungefüllt.
+
+Achtung, Orakel-Falle im Werkzeug: Solange ein Rumpf nur `...` enthält,
+meldet pytest den Test als "passed". Der Dojo meldet ihn als "leer".
 
 Ausführen:
     python3 tools/mutation_dojo.py --suite oracle                      # TODO 1
@@ -14,7 +17,7 @@ Ausführen:
     python3 tools/mutation_dojo.py --tests tests/test_triage_oracle.py # alle drei
 """
 
-from src.triage import CATEGORY_KEYWORDS, classify_and_prioritize
+from src.triage import CATEGORY_KEYWORDS, classify_and_prioritize  # noqa: F401 (für die TODOs)
 
 
 def _ticket(betreff: str, text: str) -> dict:
@@ -23,12 +26,12 @@ def _ticket(betreff: str, text: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# TODO 1 — Der naheliegende Weg
+# TODO 1: Der naheliegende Weg (Lab, Aufgabe B)
 #
 # Schreibt EINEN Test, der über alle Keywords läuft und prüft, dass jedes
-# Keyword seiner Kategorie zugeordnet wird. Nutzt dafür CATEGORY_KEYWORDS —
-# also die Tabelle aus dem Modul. Keine Magic Strings, kein Duplikat: die
-# Refaktorierung, die man in jedem Review vorschlagen würde.
+# Keyword seiner Kategorie zugeordnet wird. Nutzt dafür CATEGORY_KEYWORDS,
+# also die Tabelle aus dem Modul. Keine Magic Strings, kein Duplikat: Das ist
+# die Refaktorierung, die man in jedem Review vorschlagen würde.
 #
 # Anforderungen:
 #   1. eine Schleife über CATEGORY_KEYWORDS.items()
@@ -39,48 +42,48 @@ def _ticket(betreff: str, text: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def test_jedes_keyword_trifft_seine_kategorie():
-    ...
+    ...  # TODO 1: Rumpf ersetzen
 
 
 # ---------------------------------------------------------------------------
-# TODO 2 — Derselbe Test, eine Zeile anders
+# TODO 2: Derselbe Test, eine Zeile anders (Lab, Aufgabe C)
 #
-# Kopiert den Test von oben. Aendert genau EINE Sache: die Erwartung kommt
+# Kopiert den Test von oben. Ändert genau EINE Sache: Die Erwartung kommt
 # nicht mehr aus dem Modul, sondern aus einer eingefrorenen Kopie der Tabelle,
 # die HIER in dieser Datei steht.
 #
 # Anforderungen:
-#   1. FROZEN als dict[str, tuple[str, ...]] hier im Testmodul anlegen —
-#      als ausgeschriebenes Literal, NICHT aus CATEGORY_KEYWORDS abgeleitet
-#      (eine Ableitung wäre wieder dasselbe mitwandernde Orakel)
+#   1. FROZEN als dict[str, tuple[str, ...]] hier im Testmodul anlegen, und
+#      zwar als ausgeschriebenes Literal, NICHT aus CATEGORY_KEYWORDS
+#      abgeleitet (eine Ableitung wäre wieder dasselbe mitwandernde Orakel)
 #   2. sonst identische Schleife und identische Assertion
 #   3. Zahl aus --suite frozen mit der aus TODO 1 vergleichen
 #
 # Ja, das dupliziert Daten. Notiert im Kommentar, WARUM das hier richtig ist.
 # ---------------------------------------------------------------------------
 
-FROZEN: dict[str, tuple[str, ...]] = {}
+FROZEN: dict[str, tuple[str, ...]] = {}  # TODO 2: Tabelle eintragen
 
 
 def test_jedes_keyword_trifft_seine_kategorie_eingefroren():
-    ...
+    ...  # TODO 2: Rumpf ersetzen
 
 
 # ---------------------------------------------------------------------------
-# TODO 3 — Die ehrliche Grenze
+# TODO 3: Die ehrliche Grenze (Lab, Für zu Hause)
 #
 # Beide Tests oben setzen betreff UND text auf dasselbe Keyword. Baut
 # dieselbe Schleife noch einmal, aber diesmal steht das Keyword NUR im
-# Betreff; als Text nehmt ihr einen festen Platzhalter ohne Keyword, z. B.
+# Betreff. Als Text nehmt ihr einen festen Platzhalter ohne Keyword, z. B.
 # "kein inhalt". Erwartung ist weiterhin FROZEN.
 #
 # Laufen lassen:
 #   python3 tools/mutation_dojo.py --tests tests/test_triage_oracle.py
 #
-# Was ihr sehen werdet: der Test ist grün, alle 34 Fälle bestehen. Er
+# Was ihr sehen werdet: Der Test ist grün, alle 34 Fälle bestehen. Er
 # findet also NICHTS, was die beiden Tests oben nicht schon gefunden hätten.
 #
-# Notiert im Kommentar, warum: welche Felder liest _ticket_text() — und was
+# Notiert im Kommentar, warum: Welche Felder liest _ticket_text(), und was
 # heißt das für die Eingabemenge, gegen die wir den Score gemessen haben?
 # (Stichwort: mehr Testfälle sind nicht dasselbe wie mehr Orakel. Diese
 # Variation ändert die Eingabe nicht entlang einer Dimension, auf die der
@@ -88,4 +91,4 @@ def test_jedes_keyword_trifft_seine_kategorie_eingefroren():
 # ---------------------------------------------------------------------------
 
 def test_keyword_nur_im_betreff():
-    ...
+    ...  # TODO 3: Rumpf ersetzen

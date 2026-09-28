@@ -1,7 +1,7 @@
 """Tests für die regelbasierte Ticket-Triage.
 
 Diese Tests definieren das erwartete Verhalten. Sie müssen VOR und NACH
-jedem Refactoring grün sein — egal ob Mensch oder KI den Code anfasst.
+jedem Refactoring grün sein, egal ob Mensch oder KI den Code anfasst.
 """
 
 from src.triage import classify_and_prioritize, triage_all

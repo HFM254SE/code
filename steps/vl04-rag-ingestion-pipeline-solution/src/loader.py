@@ -1,22 +1,21 @@
-"""Document Loader — erster Schritt der Ingestion-Pipeline.
+"""Document Loader: erster Schritt der Ingestion-Pipeline.
 
-Liest die LeineTech-Wissensbasis (`docs/`, 8 Markdown-Artikel) von der Platte
-und liefert pro Datei ein einheitliches Dict {"text", "metadata"}. Die Pipeline
-(loader → chunker → embedder → vectorstore) arbeitet ab hier nur noch mit
-diesem Format — egal woher die Dokumente ursprünglich stammen.
+Liest die LeineTech-Wissensbasis (`docs/`, 8 Markdown-Artikel) und liefert pro
+Datei ein Dict {"text", "metadata"}. Alle weiteren Schritte (chunker, embedder,
+vectorstore) arbeiten nur noch mit diesem Format. Käme ein Dokument aus einem
+PDF oder Wiki, müsste nur der Loader angepasst werden.
 """
 
 from pathlib import Path
 
 
-def load_documents(docs_dir: str) -> list[dict]:
-    """Lädt alle .md-Dateien aus docs_dir.
+def load_documents(docs_dir: str | Path) -> list[dict]:
+    """Lädt alle .md-Dateien aus docs_dir, sortiert nach Dateiname.
 
-    Gibt eine Liste von Dicts zurück:
-        [{"text": "...", "metadata": {"source": "vpn-zugang.md"}}, ...]
+    Rückgabe: [{"text": "...", "metadata": {"source": "vpn-zugang.md"}}, ...]
 
-    Leere Dateien werden übersprungen. Sortiert nach Dateiname, damit die
-    Reihenfolge (und damit die vergebenen chunk_ids) reproduzierbar ist.
+    Leere Dateien werden übersprungen. Die feste Sortierung macht die
+    Reihenfolge und damit die chunk_ids reproduzierbar.
 
     Raises:
         FileNotFoundError: wenn docs_dir nicht existiert.
@@ -29,11 +28,6 @@ def load_documents(docs_dir: str) -> list[dict]:
     for path in sorted(base.glob("*.md")):
         text = path.read_text(encoding="utf-8").strip()
         if not text:
-            continue  # leere Dateien überspringen
-        documents.append(
-            {
-                "text": text,
-                "metadata": {"source": path.name},
-            }
-        )
+            continue
+        documents.append({"text": text, "metadata": {"source": path.name}})
     return documents

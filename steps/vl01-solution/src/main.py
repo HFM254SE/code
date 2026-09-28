@@ -6,6 +6,7 @@ from src.triage import triage_all
 
 
 def main() -> None:
+    """Lädt alle Tickets, klassifiziert sie und druckt den Report."""
     tickets = list(load_tickets())
     print("LeineTech Ticket-Triage")
     print(f"Anzahl Tickets: {len(tickets)}")

@@ -13,3 +13,8 @@ tmp
 .env
 .claude
 .continue/
+
+# Testabdeckung (pytest-cov)
+.coverage
+.coverage.*
+htmlcov/

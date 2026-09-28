@@ -1,13 +1,14 @@
 """Konformitäts-Gate: prüft eine Implementierung gegen api/openapi.yaml.
 
-    python3 tools/spec_gate.py api/app.py              # Referenz  -> soll 0 Befunde
-    python3 tools/spec_gate.py api/drifted_server.py   # Drift     -> soll >=5 Befunde
+    python3 tools/spec_gate.py api/app.py              # Referenz: 0 Befunde
+    python3 tools/spec_gate.py api/drifted_server.py   # Drift: 7 Befunde
+    python3 tools/spec_gate.py --check                 # beides zusammen
 
-Kein Server, kein Import des Prüflings, keine Abhängigkeiten: die
+Kein Server, kein Import des Prüflings, keine Abhängigkeiten: Die
 Implementierung wird mit `ast` **statisch** gelesen. Ein kaputter oder
 bösartiger Server kann dieses Gate also nicht beeinflussen.
 
-Zwei-Seiten-Kriterium — beides muss gelten:
+Zwei-Seiten-Kriterium, beides muss gelten:
 
     rot  auf api/drifted_server.py    (sonst prüft das Gate nichts)
     grün auf api/app.py               (sonst prüft es das Falsche)
@@ -15,17 +16,25 @@ Zwei-Seiten-Kriterium — beides muss gelten:
 Ein Gate, das immer rot ist, ist von einem funktionierenden Gate nicht zu
 unterscheiden. Ein Gate, das immer grün ist, auch nicht.
 
-Dieses Gate ist FERTIG — im Lab benutzt ihr es als Prüfwerkzeug. Lesenswert
+Dieses Gate ist FERTIG. Im Lab benutzt ihr es als Prüfwerkzeug. Lesenswert
 sind trotzdem zwei Entscheidungen darin: die Aufrufverfolgung in
 `_raised_status_codes()` (warum app.py grün ist, obwohl der 404 in
 `_require()` steckt) und `FRAMEWORK_CODES` (welche Statuscodes der Anwendung
 gehören und welche dem Framework). Ein Gate ist nie neutral.
+
+Bekannte Grenzen, alle gewollt statisch:
+  - Laufzeitverhalten sieht das Gate nicht, zum Beispiel Werte und
+    Validierungsgrenzen wie `limit` 1 bis 100. Dafür gibt es Schemathesis.
+  - Nur benannte Response-Schemas werden verglichen (siehe
+    SPEC_RESPONSE_FIELDS). Array-Antworten und Handler ohne `response_model`
+    bleiben ungeprüft.
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -114,7 +123,7 @@ def impl_model(pyfile: Path) -> dict:
             ops[(method, path)] = {
                 "status": status,
                 "response_model": response_model,
-                "qparams": _query_params(node),
+                "qparams": _query_params(node, classes),
                 "raised": _raised_status_codes(node, functions, set()),
                 "lineno": node.lineno,
             }
@@ -124,7 +133,7 @@ def impl_model(pyfile: Path) -> dict:
 def _route_from_decorator(deco: ast.expr) -> tuple[str, str, int | None, str | None] | None:
     """(METHODE, Pfad, status_code, response_model) aus `@app.get("/x", ...)`.
 
-    None, sobald der Dekorator keine Route ist — das ist der Normalfall, denn
+    None, sobald der Dekorator keine Route ist. Das ist der Normalfall, denn
     `decorator_list` enthält auch alles andere (@dataclass, @field_validator).
     """
     if not isinstance(deco, ast.Call) or not isinstance(deco.func, ast.Attribute):
@@ -155,10 +164,11 @@ def _route_from_decorator(deco: ast.expr) -> tuple[str, str, int | None, str | N
 NICHT_QUERY = {"request", "self"}
 
 
-def _query_params(fn: ast.FunctionDef) -> set[str]:
-    """Query-Parameter = Funktionsargumente, die nicht im Pfad stehen.
+def _query_params(fn: ast.FunctionDef, classes: dict) -> set[str]:
+    """Query-Parameter = Funktionsargumente, die weder im Pfad stehen noch
+    Request-Body sind.
 
-    `request: Request` ist ein Framework-Objekt, kein Query-Parameter — es
+    `request: Request` ist ein Framework-Objekt, kein Query-Parameter. Es
     steht deshalb in NICHT_QUERY. Genau solche Ausnahmen sind der Grund,
     warum ein naives Gate auf dem *korrekten* Server anschlägt.
     """
@@ -174,19 +184,35 @@ def _query_params(fn: ast.FunctionDef) -> set[str]:
         annot = ast.unparse(arg.annotation) if arg.annotation else ""
         if annot.endswith("Request"):
             continue
-        if _is_body_model(annot):
+        if _is_body_model(annot, classes):
             continue
         out.add(arg.arg)
     return out
 
 
-def _is_body_model(annot: str) -> bool:
-    """Pydantic-Body-Modelle sind keine Query-Parameter."""
-    return annot in {"TicketEingabe", "Eskalation"}
+def _is_body_model(annot: str, classes: dict, seen: frozenset = frozenset()) -> bool:
+    """True, wenn die Annotation ein Pydantic-Modell aus demselben Modul ist.
+
+    FastAPI liest ein Argument, dessen Typ von `BaseModel` erbt, als
+    Request-Body, nicht als Query-Parameter. Das gilt auch über mehrere
+    Vererbungsstufen (`Ticket(TicketEingabe)`). Ein Enum wie `KategorieEnum`
+    erbt nicht von BaseModel und bleibt deshalb Query-Parameter.
+
+    Grenze: Modelle aus anderen Modulen sieht ein Gate, das nur diese eine
+    Datei liest, nicht.
+    """
+    node = classes.get(annot)
+    if node is None or annot in seen:
+        return False
+    for base in node.bases:
+        if ast.unparse(base).split(".")[-1] == "BaseModel":
+            return True
+        if isinstance(base, ast.Name) and _is_body_model(base.id, classes, seen | {annot}):
+            return True
+    return False
 
 
 def _path_placeholders(path: str) -> list[str]:
-    import re
     return re.findall(r"\{([^}]+)\}", path)
 
 
@@ -237,19 +263,20 @@ def response_fields(model_name: str | None, classes: dict) -> set[str] | None:
 # ---------------------------------------------------------------------------
 
 # Statuscodes, die FastAPI SELBST erzeugt: 400 bei nicht parsbarem Body, 422
-# bei Schema-Verletzung. Im Handler steht dafür kein `raise` — sie hier zu
-# fordern würde den KORREKTEN Server anschwärzen. Welche Codes die Anwendung
+# bei Schema-Verletzung. Im Handler steht dafür kein `raise`. Sie hier zu
+# fordern, würde den KORREKTEN Server anschwärzen. Welche Codes die Anwendung
 # besitzt und welche das Framework, muss man selbst entscheiden.
 FRAMEWORK_CODES = {400, 422}
 
-# Die Response-Felder aus components/schemas — hier VORLÄUFIG fest verdrahtet.
-# specyaml löst `$ref` nicht auf, deshalb steht das hier von Hand.
+# Die Response-Felder aus components/schemas, hier VORLÄUFIG von Hand
+# eingetragen. specyaml löst `$ref` nicht auf, deshalb steht das hier.
+# Ein Schema ohne Eintrag prüft das Gate STUMM nicht (Lab, Aufgabe F.1).
 #
 # -> Vertiefung: aus spec["schemas"] herleiten und dieses dict löschen.
 #    Achtung, dritte Falle: `GET /tickets` liefert ein ARRAY. Sobald ihr
-#    `$ref` auflöst, seht ihr auch `items.$ref -> Ticket` — und müsst auf
-#    der Implementierungsseite `list[Ticket]` entpacken. Sonst erklärt das
-#    Gate wieder den korrekten Server für kaputt.
+#    `$ref` auflöst, seht ihr auch `items.$ref -> Ticket` und müsst auf der
+#    Implementierungsseite `list[Ticket]` entpacken. Sonst erklärt das Gate
+#    wieder den korrekten Server für kaputt.
 SPEC_RESPONSE_FIELDS = {
     "Ticket": {"id", "von", "betreff", "text", "erstellt"},
     "TriageErgebnis": {"id", "kategorie", "prioritaet"},
@@ -265,17 +292,18 @@ def gate(pyfile: Path) -> list[Befund]:
       1. ROUTE   Jede in der Spec deklarierte (Methode, Pfad)-Kombination
                  existiert in der Implementierung.
       2. EXTRA   Die Implementierung hat keine Route, die die Spec nicht kennt.
-      3. STATUS  Der Erfolgs-Statuscode stimmt. Achtung: FastAPI-Default ist
-                 200 — steht `status_code=` nicht am Dekorator, ist es 200.
+      3. STATUS  Der Erfolgs-Statuscode stimmt. Achtung: Der FastAPI-Default
+                 ist 200. Steht `status_code=` nicht am Dekorator, ist es 200.
       4. ERRCODE Jeder in der Spec deklarierte Fehlercode >= 400 ist im Handler
-                 erreichbar (nutzt `impl["ops"][key]["raised"]`) — außer den
-                 FRAMEWORK_CODES, die FastAPI selbst erzeugt.
+                 erreichbar (nutzt `impl["ops"][key]["raised"]`). Ausgenommen
+                 sind die FRAMEWORK_CODES, die FastAPI selbst erzeugt.
       5. QPARAM  Die Query-Parameter-Namen stimmen (Spec vs. Implementierung),
                  in beide Richtungen: fehlende UND unspezifizierte.
       6. SCHEMA  Die Feldnamen des Response-Modells stimmen mit
                  SPEC_RESPONSE_FIELDS überein (nutzt `response_fields(...)`).
-                 Schemas ohne Eintrag dort werden STUMM übersprungen — ein von
-                 Hand gepflegtes Orakel ignoriert, was es nicht kennt.
+                 Schemas ohne Eintrag dort werden STUMM übersprungen, ebenso
+                 Handler ohne `response_model`. Ein von Hand gepflegtes
+                 Orakel ignoriert, was es nicht kennt.
     """
     spec = spec_model()
     impl = impl_model(pyfile)
@@ -286,27 +314,26 @@ def gate(pyfile: Path) -> list[Befund]:
         ort = f"{method} {path}"
         ist = impl["ops"].get(key)
 
-        # 1 — ROUTE: fehlt die Route ganz? Dann Befund und weiter.
+        # 1 ROUTE: Fehlt die Route ganz? Dann Befund und weiter.
         if ist is None:
             befunde.append(Befund("ROUTE", ort, "in der Implementierung nicht vorhanden"))
             continue
 
-        # 3 — STATUS: Erfolgscode vergleichen (FastAPI-Default ist 200).
+        # 3 STATUS: Erfolgscode vergleichen (FastAPI-Default ist 200).
         ist_status = ist["status"] if ist["status"] is not None else 200
         if soll["success"] is not None and ist_status != soll["success"]:
             befunde.append(Befund("STATUS", ort,
                                   f"Erfolgscode {ist_status}, Spec verlangt {soll['success']}"))
 
-        # 4 — ERRCODE: nur Codes prüfen, die die ANWENDUNG entscheidet.
-        #     400/422 erzeugt FastAPI selbst, ohne `raise` im Handler — sie zu
-        #     fordern würde den korrekten Server anschwärzen.
+        # 4 ERRCODE: nur Codes prüfen, die die ANWENDUNG entscheidet.
+        #   400 und 422 erzeugt FastAPI selbst, ohne `raise` im Handler.
         pflicht = {c for c in soll["codes"] if c >= 400 and c not in FRAMEWORK_CODES}
         fehlend = sorted(pflicht - ist["raised"])
         if fehlend:
             befunde.append(Befund("ERRCODE", ort,
                                   f"Spec-Fehlercode(s) {fehlend} im Handler nicht erreichbar"))
 
-        # 5 — QPARAM: Namen in beide Richtungen vergleichen.
+        # 5 QPARAM: Namen in beide Richtungen vergleichen.
         fehlt = sorted(soll["qparams"] - ist["qparams"])
         extra = sorted(ist["qparams"] - soll["qparams"])
         if fehlt:
@@ -314,7 +341,7 @@ def gate(pyfile: Path) -> list[Befund]:
         if extra:
             befunde.append(Befund("QPARAM", ort, f"nicht spezifizierte Parameter {extra}"))
 
-        # 6 — SCHEMA: Response-Feldnamen vergleichen (nur bekannte Schemas).
+        # 6 SCHEMA: Response-Feldnamen vergleichen (nur bekannte Schemas).
         soll_name = soll["response_schema"]
         soll_felder = SPEC_RESPONSE_FIELDS.get(soll_name) if soll_name else None
         ist_felder = response_fields(ist["response_model"], impl["classes"])
@@ -323,7 +350,7 @@ def gate(pyfile: Path) -> list[Befund]:
                                   f"Response-Felder {sorted(ist_felder)} "
                                   f"!= Spec {sorted(soll_felder)}"))
 
-    # 2 — EXTRA: Routen der Implementierung, die die Spec nicht deklariert.
+    # 2 EXTRA: Routen der Implementierung, die die Spec nicht deklariert.
     for key in impl["ops"]:
         if key not in spec["ops"]:
             befunde.append(Befund("EXTRA", f"{key[0]} {key[1]}",
@@ -337,11 +364,13 @@ def gate(pyfile: Path) -> list[Befund]:
 # ---------------------------------------------------------------------------
 
 def check_two_sided() -> int:
-    """Das Abnahme-Kriterium — ohne pytest, nur Standardbibliothek.
+    """Das Abnahme-Kriterium, ohne pytest, nur mit der Standardbibliothek.
 
         python3 tools/spec_gate.py --check
 
     Beides muss gelten. Ein Gate, das nur eine Seite erfüllt, ist nicht fertig.
+    Zwischen Lab-Aufgabe D (Spec erweitert) und E (Handler gebaut) ist dieser
+    Aufruf absichtlich rot: Er misst das Endergebnis, nicht den Zwischenstand.
     """
     referenz = gate(REPO / "api" / "app.py")
     drift = gate(REPO / "api" / "drifted_server.py")
@@ -351,13 +380,16 @@ def check_two_sided() -> int:
 
     print("Abnahme-Kriterium (beide Zeilen müssen OK sein):")
     print(f"  grün auf api/app.py             : {len(referenz)} Befund(e)  "
-          f"{'OK' if ok_gruen else 'FEHLT — das Gate prüft das Falsche'}")
+          f"{'OK' if ok_gruen else 'FEHLT: Befunde auf der Referenz'}")
     print(f"  rot   auf api/drifted_server.py : {len(drift)} Befund(e)  "
-          f"{'OK' if ok_rot else 'FEHLT — das Gate prüft nichts'}")
+          f"{'OK' if ok_rot else 'FEHLT: das Gate prüft nichts'}")
     if not ok_gruen:
-        print("\n  Falsch-Positive auf der Referenz:")
+        print("\n  Befunde auf der Referenz api/app.py:")
         for b in sorted(referenz, key=lambda x: (x.art, x.ort)):
             print(f"    {b}")
+        print("\n  Nach Lab-Aufgabe D (Spec erweitert, Handler fehlt noch) ist genau")
+        print("  1 ROUTE-Befund erwartet. Jeder andere Befund heißt: Entweder weicht")
+        print("  app.py von der Spec ab, oder das Gate prüft das Falsche.")
     print()
     print("BESTANDEN" if (ok_gruen and ok_rot) else "NICHT BESTANDEN")
     return 0 if (ok_gruen and ok_rot) else 1

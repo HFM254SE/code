@@ -11,8 +11,12 @@ DEFAULT_TICKET_PATH = Path("data/tickets.json")
 def load_tickets(path: Path = DEFAULT_TICKET_PATH) -> tuple[dict, ...]:
     """Lädt alle Tickets aus der JSON-Datei.
 
-    Liefert ein unveränderliches Tupel, damit der Cache nicht versehentlich
-    von Aufrufern mutiert werden kann.
+    Der Cache merkt sich das Ergebnis des letzten Aufrufs. Schlüssel sind die
+    Argumente, nicht der aufgelöste Pfad: load_tickets() und
+    load_tickets(DEFAULT_TICKET_PATH) sind zwei Einträge. Ein Aufruf mit anderen
+    Argumenten liest die Datei neu ein. Das Tupel verhindert, dass
+    Aufrufer die gecachte Sammlung verändern. Die einzelnen Ticket-Dicts sind
+    trotzdem veränderbar, Aufrufer behandeln sie deshalb als schreibgeschützt.
 
     Raises:
         FileNotFoundError: wenn die Ticket-Datei nicht existiert.

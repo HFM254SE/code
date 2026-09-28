@@ -1,16 +1,19 @@
-"""Referenz-Implementierung der LeineTech Ticket-API — konform zu openapi.yaml.
+"""Referenz-Implementierung der LeineTech Ticket-API, konform zu openapi.yaml.
 
-Das ist der Soll-Zustand: Dieser Server hält sich exakt an die Spec. In
-Lab-Teil 2 vergleicht ihr ihn mit `drifted_server.py`, der absichtlich
-abweicht. Gebaut mit FastAPI, weil FastAPI die OpenAPI-Spec aus dem Code
-selbst generiert (`/docs`, `/openapi.json`) — so lässt sich Drift direkt
-maschinell prüfen.
+Das ist der Soll-Zustand: Dieser Server hält alle Zusagen der Spec ein, die
+`tools/spec_gate.py` prüft (Routen, Statuscodes, Query-Parameter,
+Response-Felder). In Lab-Teil 2 vergleicht ihr ihn mit `drifted_server.py`,
+der absichtlich abweicht. Hier landet auch euer neuer Endpunkt.
 
-Diese Datei ist die *grüne* Seite des Abnahme-Kriteriums: ein Gate, das
-hier Befunde meldet, prüft das Falsche.
+Diese Datei ist die *grüne* Seite des Abnahme-Kriteriums: Ein Gate, das hier
+Befunde meldet, prüft das Falsche.
+
+Zwei Stellen sind bewusst schlicht und im Code markiert: Das Pfad-Pattern
+`^T-[0-9]{4}$` wird nicht erzwungen, und die ID-Vergabe ist nicht
+nebenläufigkeitssicher. Spec-konform heißt nicht fehlerfrei.
 
     python3 -m uvicorn api.app:app --reload
-    # Doku unter http://localhost:8000/docs — für das Gate nicht nötig
+    # Doku unter http://localhost:8000/docs, für das Gate nicht nötig
 """
 
 import re
@@ -29,10 +32,10 @@ app = FastAPI(title="LeineTech Ticket-API", version="1.0.0")
 # Kategorien als Enum, damit FastAPI den Query-Parameter validiert wie die
 # Spec es verlangt (Schema "Kategorie" ist dort ein Enum).
 #
-# Ausgeschrieben statt per `Enum("KategorieEnum", ...)` erzeugt: ein zur
+# Ausgeschrieben statt per `Enum("KategorieEnum", ...)` erzeugt: Ein zur
 # Laufzeit gebautes Enum ist für einen Typprüfer nur eine Variable und darf
 # dann nicht als Annotation stehen. Die Kopplung an src/ geht dadurch nicht
-# verloren — sie wandert nur von der Erzeugung in die Zusicherung darunter.
+# verloren. Sie wandert nur von der Erzeugung in die Zusicherung darunter.
 class KategorieEnum(str, Enum):
     Abrechnung = "Abrechnung"
     Zugang = "Zugang"
@@ -41,18 +44,20 @@ class KategorieEnum(str, Enum):
     Software = "Software"
 
 
-# Eine Quelle der Wahrheit bleibt src/: laufen die Listen auseinander, scheitert
-# schon der Import — nicht erst irgendein Request.
+# Eine Quelle der Wahrheit bleibt src/: Laufen die Listen auseinander, scheitert
+# schon der Import und nicht erst irgendein Request. Die ausgeschriebene Liste
+# ist ein unabhängiges Orakel wie FROZEN im Lab: Löscht jemand den Schlüssel
+# "Software" aus CATEGORY_KEYWORDS, startet der Server nicht mehr.
 assert [k.value for k in KategorieEnum] == CATEGORIES, (
-    "KategorieEnum weicht von CATEGORY_KEYWORDS ab — Drift zwischen API und Triage"
+    "KategorieEnum weicht von CATEGORY_KEYWORDS ab: Drift zwischen API und Triage"
 )
 
-# In-Memory-Store: beim Start aus data/tickets.json geladen; POST legt neue
-# Tickets hier ab, damit sie danach per GET abrufbar sind (Spec-Versprechen!).
+# In-Memory-Store: beim Start aus data/tickets.json geladen. POST legt neue
+# Tickets hier ab, damit sie danach per GET abrufbar sind (Spec-Versprechen).
 _STORE: dict[str, dict] = {t["id"]: t for t in load_tickets()}
 
 
-# "format: email" ist zweideutig — Pydantic akzeptiert z. B. IDN-Domains
+# "format: email" ist zweideutig: Pydantic akzeptiert z. B. IDN-Domains
 # (münchen.de), der JSON-Schema-Format-Check vieler Tools nicht. Die Spec
 # nagelt es deshalb per Pattern fest, und wir prüfen exakt dasselbe Pattern.
 EMAIL_PATTERN = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
@@ -103,7 +108,7 @@ def _require(ticket_id: str) -> dict:
 def list_tickets(
     request: Request,
     kategorie: KategorieEnum | None = None,
-    limit: int = Query(50, ge=1, le=100),  # Grenzen wie in der Spec (1–100)
+    limit: int = Query(50, ge=1, le=100),  # Grenzen wie in der Spec (1 bis 100)
 ):
     # Strikt wie die Spec: unbekannte Query-Parameter ablehnen statt still
     # ignorieren (FastAPI-Default wäre ignorieren).
@@ -124,13 +129,15 @@ def list_tickets(
 
 @app.post("/tickets", response_model=Ticket, status_code=201, tags=["tickets"])
 def create_ticket(eingabe: TicketEingabe):
+    # Bewusst naiv und nicht nebenläufigkeitssicher: Zwei gleichzeitige
+    # Requests können dieselbe ID bekommen. Review-Beispiel aus VL 9.
     next_num = max((int(tid[2:]) for tid in _STORE), default=1000) + 1
     new = {
         "id": f"T-{next_num}",
         "von": eingabe.von,
         "betreff": eingabe.betreff,
         "text": eingabe.text,
-        "erstellt": "2026-05-31",  # Demo: feste Eingangsdatum-Stub
+        "erstellt": "2026-05-31",  # fester Datums-Stub für die Demo
     }
     _STORE[new["id"]] = new
     return new
@@ -138,6 +145,9 @@ def create_ticket(eingabe: TicketEingabe):
 
 @app.get("/tickets/{ticket_id}", response_model=Ticket, tags=["tickets"])
 def get_ticket(ticket_id: str):
+    # Bewusst ohne Pfad-Pattern (`^T-[0-9]{4}$`): Jede unbekannte ID, auch eine
+    # falsch geformte, liefert 404 wie in der Spec. Mit Pattern käme 422, und die
+    # Beobachtungen in Lab-Aufgabe F sähen anders aus.
     return _require(ticket_id)
 
 

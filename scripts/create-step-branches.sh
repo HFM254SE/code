@@ -8,11 +8,16 @@
 #
 # Nutzung (nur durch Menschen, vgl. Corporate Policy):
 #   ./scripts/create-step-branches.sh
-#   git push -f origin vl01-start vl01-solution vl03-llm-client vl03-evaluation \
-#                      vl06-guardrails vl08-agent vl09-oracle
+#   git push -f origin <alle Steps aus scripts/steps.conf>   # Zeile gibt das Skript am Ende aus
 #
 # Idempotent: kann nach Änderungen an common/ oder steps/ erneut laufen
-# (Branches werden mit -f neu gesetzt).
+# (Branches werden mit -f neu gesetzt). Es nutzt den Arbeitsstand von common/,
+# scripts/ und steps/, nicht den letzten Commit. Deshalb vorher committen, damit
+# Branches und main zusammenpassen.
+#
+# Nach dem Push einmal auf einem frischen Klon prüfen, z. B.
+#   git clone <repo> /tmp/probe && cd /tmp/probe && git checkout vl06-guardrails
+#   python -m pytest -q
 
 set -euo pipefail
 
@@ -48,6 +53,5 @@ git worktree remove -f "$BUILD_DIR"
 git branch -D "$TMP_BRANCH"
 
 echo
-echo "Fertig. Veröffentlichen mit (vl04 = Svens RAG-WIP wird NICHT gepusht):"
-echo "  git push -f origin vl01-start vl01-solution vl03-llm-client vl03-evaluation \\"
-echo "                     vl06-guardrails vl08-agent vl09-oracle"
+echo "Fertig. Veröffentlichen (alle Checkpoints aus scripts/steps.conf, auch VL 4 und VL 5):"
+echo "  git push -f origin ${STEPS[*]}"

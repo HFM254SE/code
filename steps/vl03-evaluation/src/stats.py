@@ -10,6 +10,8 @@ def print_stats(results: list[dict]) -> None:
     categories = Counter(result["kategorie"] for result in results)
     priorities = Counter(result["prioritaet"] for result in results)
 
+    # Das Report-Format ist Teil des Verhaltens und bleibt Zeichen für Zeichen
+    # gleich, auch "Prioritaeten" ohne Umlaut. Sonst schlägt der Report-Vergleich an.
     print("=" * REPORT_WIDTH)
     print("TICKET-STATISTIK LEINETECH SUPPORT")
     print("=" * REPORT_WIDTH)

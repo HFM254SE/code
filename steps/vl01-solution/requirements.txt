@@ -1,20 +1,20 @@
-# LeineTech Ticket-Triage — Abhaengigkeiten
-# Aktualisiert in VL 1: alle bekannten CVEs der eingefrorenen Versionen behoben.
-# (requests/PyYAML/Jinja2 werden fuer die geplante Webhook-/Report-Erweiterung
-# vorgehalten; certifi/urllib3 sind transitive Pins von requests.)
+# LeineTech Ticket-Triage: Abhängigkeiten
+# In VL 1 aktualisiert: Die bekannten CVEs der eingefrorenen Versionen sind behoben.
+# requests, PyYAML und Jinja2 importiert src/ nicht. Sie bleiben gepinnt, weil
+# litellm sie ab VL 3 indirekt mitbringt. Der Pin erzwingt die gepatchten
+# Versionen. certifi und urllib3 kommen als Abhängigkeiten von requests dazu.
 requests==2.33.0
 urllib3==2.7.0
 certifi==2024.12.14
 PyYAML==6.0.2
 Jinja2==3.1.6
 
-# LLM-Anbindung: ab VL 3 spricht das Lab per litellm den Kurs-Endpunkt an
-# (HomeCloud, OpenAI-kompatibel). Hier bereits vorgehalten, weil das VL3-Lab
-# von diesem Branch startet und `pip install -r requirements.txt` litellm ziehen
-# soll (Pin identisch zu den vl03-Branches, damit kein Versionssprung entsteht).
+# LLM-Anbindung: Ab VL 3 spricht das Lab per litellm den Kurs-Endpunkt an
+# (HomeCloud, OpenAI-kompatibel). Der Pin steht schon hier, weil das Lab von
+# VL 3 auf diesem Branch startet. Er ist identisch mit den vl03-Branches.
 litellm==1.89.2
 
-# Entwicklung / Qualitaet
+# Entwicklung und Qualität
 pytest==9.0.3
 pylint==3.3.1
 flake8==7.1.1

@@ -1,12 +1,28 @@
 """Implementierung mit ABSICHTLICHEN Abweichungen von api/openapi.yaml.
 
-Zielscheibe für das Konformitäts-Gate in Teil 2 des Labs. Diese Datei ist
-kein Suchspiel: **welche** Abweichungen hier stecken, steht auf der Folie und
-im Lab-Sheet. Die Aufgabe ist, das Gate zu bauen, das sie findet — und das
-gleichzeitig auf `api/app.py` grün bleibt.
+Zielscheibe für das Konformitäts-Gate in Lab-Teil 2 und die rote Seite des
+Abnahme-Kriteriums (`python3 tools/spec_gate.py --check`). Die Datei ist kein
+Suchspiel. Alle Abweichungen stehen hier offen, damit ihr im Lab-Abschluss
+vergleichen könnt, welcher Prüfer welche davon sieht.
+
+Für das statische Gate sichtbar (6 Stellen, 7 Befunde):
+
+  1. `von` fehlt in TicketEingabe und Ticket  SCHEMA (GET /tickets/{id}, POST /tickets)
+  2. `prio` statt `prioritaet`                SCHEMA (POST /tickets/{id}/triage)
+  3. 400 statt 404 bei unbekannter ID          ERRCODE (GET /tickets/{id})
+  4. Query-Parameter `kategorie` fehlt         QPARAM (GET /tickets)
+  5. Route `escalate` fehlt                    ROUTE (POST /tickets/{id}/escalate)
+  6. `/health` steht nicht in der Spec         EXTRA (GET /health)
+
+Für das statische Gate unsichtbar (nur zur Laufzeit oder im Review):
+
+  7. `limit` ohne die Grenzen 1 bis 100 aus der Spec
+  8. POST /tickets speichert nichts. Das neue Ticket ist danach nicht abrufbar.
+  9. GET /tickets hat kein `response_model`. FastAPI validiert und filtert
+     die Antwort nicht, das statische Gate sieht sie nicht.
 
     python3 -m uvicorn api.drifted_server:app --port 8001
-    # nur falls ihr sie laufen sehen wollt; das Gate braucht keinen Server
+    # nur für den Contract-Test nötig, das Gate braucht keinen Server
 """
 
 from fastapi import FastAPI, HTTPException

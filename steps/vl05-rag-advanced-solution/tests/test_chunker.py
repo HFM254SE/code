@@ -1,9 +1,11 @@
-"""Tests fuer Document-Loader und Chunking — offline, ohne Modell oder Netz.
+"""Tests für Document Loader und Chunking: offline, ohne Modell und ohne Netz.
 
-Diese Tests sichern das Verhalten der Ingestion-Pipeline-Bausteine ab, die
-KEINEN Embedding-Download und keine Vektordatenbank brauchen. Embedder und
-Vectorstore werden im Lab manuell getestet (siehe labs/vl04-lab.md).
+Diese Tests sind die Vorgabe für Lab VL 4, Teil 1. Embedder, Vektordatenbank
+und Suche brauchen ein Embedding-Modell. Sie werden getrennt davon mit einer
+Attrappe getestet (in VL 4: tests/test_pipeline_offline.py).
 """
+
+import pytest
 
 from src.chunker import chunk_document
 from src.loader import load_documents
@@ -41,11 +43,8 @@ def test_load_documents_sortiert_stabil(tmp_path):
 
 
 def test_load_documents_fehlendes_verzeichnis():
-    try:
+    with pytest.raises(FileNotFoundError):
         load_documents("gibt/es/nicht")
-        assert False, "FileNotFoundError erwartet"
-    except FileNotFoundError:
-        pass
 
 
 def _make_doc(text, source="test.md"):
@@ -61,7 +60,7 @@ def test_chunk_kleines_dokument_bleibt_ein_chunk():
 
 
 def test_chunk_grosses_dokument_wird_geteilt():
-    absatz = "Dies ist ein Satz mit ordentlich Fuellmaterial darin. "
+    absatz = "Dies ist ein Satz mit ordentlich Füllmaterial darin. "
     doc = _make_doc("\n\n".join([absatz * 3] * 6))
 
     chunks = chunk_document(doc, chunk_size=200, chunk_overlap=20)
@@ -75,7 +74,7 @@ def test_chunk_ids_sind_eindeutig_und_praefixiert():
     chunks = chunk_document(doc, chunk_size=150, chunk_overlap=20)
 
     ids = [c["chunk_id"] for c in chunks]
-    assert len(ids) == len(set(ids)), "chunk_ids muessen eindeutig sein"
+    assert len(ids) == len(set(ids)), "chunk_ids müssen eindeutig sein"
     assert all(cid.startswith("quelle.md::") for cid in ids)
 
 
@@ -87,12 +86,53 @@ def test_chunk_erbt_metadaten():
 
 
 def test_chunk_ueberlappung_verbindet_nachbarn():
-    # Zwei klar getrennte Absaetze, die einzeln je > chunk_size sind → mehrere
-    # Chunks mit Ueberlappung. Der zweite Chunk traegt das Ende des ersten.
+    # Zwei klar getrennte Absätze, die einzeln je > chunk_size sind, ergeben
+    # mehrere Chunks mit Überlappung. Der zweite Chunk trägt das Ende des ersten.
     doc = _make_doc(("A" * 120) + "\n\n" + ("B" * 120))
     chunks = chunk_document(doc, chunk_size=130, chunk_overlap=15)
 
     assert len(chunks) >= 2
-    # Ueberlappung: der Anfang des zweiten Chunks stammt aus dem ersten.
     tail_of_first = chunks[0]["text"][-15:]
     assert chunks[1]["text"].startswith(tail_of_first)
+
+
+def test_chunk_ueberlappung_beginnt_an_wortgrenze():
+    satz = "Der Tunnel wird nicht überlastet, weil Teams direkt ins Internet geht."
+    doc = _make_doc("\n\n".join([satz] * 12))
+    woerter = {wort.strip(",.") for wort in satz.split()}
+
+    chunks = chunk_document(doc, chunk_size=150, chunk_overlap=30)
+
+    assert len(chunks) > 1
+    for chunk in chunks[1:]:
+        erstes_wort = chunk["text"].split()[0].strip(",.")
+        assert erstes_wort in woerter, f"Überlappung beginnt mitten im Wort: {erstes_wort!r}"
+
+
+def test_chunk_ueberlappung_bei_kurzem_vorgaenger():
+    # Der erste Chunk ist genau chunk_overlap Zeichen lang. Er wird ganz vorangestellt.
+    # Das darf keinen IndexError auslösen (z. B. durch previous[-chunk_overlap - 1]).
+    doc = _make_doc("a" * 15 + "\n\n" + "b" * 40)
+
+    chunks = chunk_document(doc, chunk_size=20, chunk_overlap=15)
+
+    assert len(chunks) >= 2
+    assert chunks[1]["text"].startswith("a" * 15)
+
+
+def test_chunk_behaelt_satzpunkte():
+    # Eine lange Zeile ohne Umbruch zwingt den Chunker bis auf die Satzebene.
+    doc = _make_doc("Das VPN trennt nach zwölf Stunden. " * 10)
+
+    chunks = chunk_document(doc, chunk_size=80, chunk_overlap=0)
+
+    assert len(chunks) > 1
+    assert all(c["text"].endswith(".") for c in chunks), "Satzpunkte dürfen nicht verloren gehen"
+
+
+def test_chunk_behaelt_zeilenstruktur():
+    doc = _make_doc("# Titel\n\n## Abschnitt\n\n" + "Ein Satz. " * 60)
+
+    chunks = chunk_document(doc, chunk_size=200, chunk_overlap=20)
+
+    assert chunks[0]["text"].startswith("# Titel\n## Abschnitt\n")

@@ -1,23 +1,26 @@
-"""Systematische Evaluierung: Keyword-Regeln vs. LLM auf dem Golden Dataset.
+"""Evaluierung: Keyword-Regeln gegen LLM auf dem Golden Dataset.
 
-Genau das, was VL 3 (Teil 7) predigt: Standardbenchmarks sagen wenig über den
-eigenen Use Case — also messen wir selbst. `eval/golden.jsonl` enthält die von
-Menschen vergebenen Soll-Labels für alle 30 Tickets.
+Standard-Benchmarks sagen wenig über den eigenen Use Case. Also messen wir
+selbst: eval/golden.jsonl enthält die von Menschen vergebenen Soll-Labels für
+alle 30 Tickets. T-1001 bis T-1010 kennt ihr aus VL 2. Das sind die
+Entwicklungsdaten, an denen ihr den Prompt verbessern dürft. Die übrigen 20
+Tickets sind Testdaten. Der Report weist sie getrennt aus.
 
-Beispiele:
-    python -m src.evaluate                      # nur Regeln, erste 10 Tickets
-    python -m src.evaluate --llm                # Regeln + LLM, erste 10 Tickets
-    python -m src.evaluate --llm --all          # alle 30 Tickets
-    LLM_MODEL=<modell> python -m src.evaluate --llm  # anderes Modell/Backend
-
-Default ist --limit 10; mit --all laufen alle 30 Tickets (qwen3.6 ueber
-HomeCloud, ein paar Sekunden pro Ticket).
+Aus dem Repo-Root starten:
+    python -m src.evaluate                            # nur Regeln, erste 10 Tickets
+    python -m src.evaluate --llm                      # Regeln und LLM, erste 10 Tickets
+    python -m src.evaluate --llm --all                # alle 30 Tickets
+    python -m src.evaluate --llm --csv eval/lauf2.csv # Ergebnis in eigene Datei
+    LLM_MODEL=<modell> python -m src.evaluate --llm   # anderes Modell, gleicher Code
 """
 
 import argparse
 import csv
 import json
+import os
+import statistics
 import time
+from collections import Counter
 from pathlib import Path
 
 from src.llm import get_model
@@ -27,10 +30,18 @@ from src.triage import classify_and_prioritize
 
 GOLDEN_PATH = Path("eval/golden.jsonl")
 RESULTS_PATH = Path("eval/results.csv")
+DEV_IDS = frozenset(f"T-{number}" for number in range(1001, 1011))  # aus VL 2 bekannt
+MAX_ERRORS_IN_A_ROW = 3  # danach ist der Endpunkt vermutlich nicht erreichbar
+REPORT_WIDTH = 74
+SYSTEM_NAMES = {"regel": "Regeln", "llm": "LLM"}
+# Aus diesen Paketen kommen die Fehler von Endpunkt und Netz (Timeout, 401, 403, 429).
+ENDPOINT_ERROR_PACKAGES = frozenset({"litellm", "openai", "httpx", "httpcore"})
 
 
 def load_golden(path: Path = GOLDEN_PATH) -> dict[str, dict]:
     """Lädt die Soll-Labels: Ticket-ID → {"kategorie", "prioritaet"}."""
+    if not path.exists():
+        raise SystemExit(f"{path} nicht gefunden. Startet den Befehl im Repo-Root.")
     golden = {}
     with open(path, encoding="utf-8") as file:
         for line in file:
@@ -40,91 +51,328 @@ def load_golden(path: Path = GOLDEN_PATH) -> dict[str, dict]:
     return golden
 
 
+# --- Messung -----------------------------------------------------------------
+
+
 def evaluate(use_llm: bool = False, limit: int | None = None) -> list[dict]:
-    """Klassifiziert Tickets mit Regeln (und optional LLM) gegen die Soll-Labels."""
+    """Klassifiziert Tickets mit den Regeln und optional per LLM.
+
+    Liefert eine Zeile pro Ticket. Nach MAX_ERRORS_IN_A_ROW Endpunkt-Fehlern in
+    Folge oder nach Strg+C endet der Lauf. Die bisherigen Zeilen bleiben erhalten.
+    """
     golden = load_golden()
-    tickets = [t for t in load_tickets() if t["id"] in golden]
-    if limit:
+    tickets = [ticket for ticket in load_tickets() if ticket["id"] in golden]
+    if limit is not None:
         tickets = tickets[:limit]
 
-    rows = []
-    for ticket in tickets:
-        gold = golden[ticket["id"]]
-        row = {
-            "id": ticket["id"],
-            "gold_kategorie": gold["kategorie"],
-            "gold_prioritaet": gold["prioritaet"],
-        }
-
-        start = time.perf_counter()
-        regel_kategorie, regel_prioritaet = classify_and_prioritize(ticket)
-        row["regel_kategorie"] = regel_kategorie
-        row["regel_prioritaet"] = regel_prioritaet
-        row["regel_latenz_s"] = round(time.perf_counter() - start, 4)
-
-        if use_llm:
-            start = time.perf_counter()
-            llm_result = classify_ticket_llm(ticket)
-            row["llm_kategorie"] = llm_result["kategorie"]
-            row["llm_prioritaet"] = llm_result["prioritaet"]
-            row["llm_latenz_s"] = round(time.perf_counter() - start, 2)
-            print(
-                f"{ticket['id']}: gold={gold['kategorie']:10} "
-                f"regel={regel_kategorie:10} llm={llm_result['kategorie']:10} "
-                f"({row['llm_latenz_s']}s)"
-            )
-
-        rows.append(row)
+    rows: list[dict] = []
+    errors_in_a_row = 0
+    try:
+        for ticket in tickets:
+            row = evaluate_ticket(ticket, golden[ticket["id"]], use_llm)
+            rows.append(row)
+            if not use_llm:
+                continue
+            _print_progress(row)
+            errors_in_a_row = errors_in_a_row + 1 if row.get("llm_fehler") else 0
+            if errors_in_a_row >= MAX_ERRORS_IN_A_ROW:
+                print(f"Abbruch nach {MAX_ERRORS_IN_A_ROW} Endpunkt-Fehlern in Folge.")
+                break
+    except KeyboardInterrupt:
+        print(f"\nAbgebrochen. Ausgewertet werden die ersten {len(rows)} Tickets.")
     return rows
 
 
+def evaluate_ticket(ticket: dict, gold: dict, use_llm: bool) -> dict:
+    """Misst ein Ticket: die Regeln immer, das LLM nur mit use_llm."""
+    row = {
+        "id": ticket["id"],
+        "gold_kategorie": gold["kategorie"],
+        "gold_prioritaet": gold["prioritaet"],
+    }
+
+    start = time.perf_counter()
+    row["regel_kategorie"], row["regel_prioritaet"] = classify_and_prioritize(ticket)
+    # Die Regeln brauchen Mikrosekunden. In Sekunden gerundet stünde hier 0.
+    row["regel_latenz_ms"] = round((time.perf_counter() - start) * 1000, 3)
+
+    if use_llm:
+        start = time.perf_counter()
+        try:
+            row.update(llm_columns(classify_ticket_llm(ticket)))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            if not is_endpoint_error(exc):
+                raise  # Fehler im eigenen Code (Prompt-Format, Parser): sichtbar lassen
+            # Ein Endpunkt-Fehler (Timeout, 429, 403) soll nicht die ganze Messung
+            # kosten. Das Ticket wird markiert, zählt als falsch, und es geht weiter.
+            message = f"{type(exc).__name__}: {exc}"
+            print(f"{ticket['id']}  Fehler bei der LLM-Anfrage: {message[:160]}")
+            row.update(error_columns(exc))
+        row["llm_latenz_s"] = round(time.perf_counter() - start, 2)
+    return row
+
+
+def is_endpoint_error(exc: BaseException) -> bool:
+    """True für Fehler von Endpunkt oder Netz, False für Fehler im eigenen Code.
+
+    litellm meldet Timeout, 401, 403 und 429 mit eigenen Exception-Klassen. Ein
+    KeyError aus dem Prompt oder ein TypeError im Parser stammt dagegen aus dem
+    eigenen Code. Er darf nicht als Endpunkt-Fehler in der Statistik verschwinden.
+    """
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+    return type(exc).__module__.split(".")[0] in ENDPOINT_ERROR_PACKAGES
+
+
+def llm_columns(result: dict) -> dict:
+    """Übernimmt das Ergebnis von classify_ticket_llm() in die CSV-Spalten.
+
+    Ältere Varianten von classify_ticket_llm() liefern nur kategorie und
+    prioritaet. Die Zusatzfelder werden deshalb mit .get() gelesen. Ein leerer
+    Wert heißt „nicht erfasst“. False hieße „kein Parse-Fehler“ und wäre geraten.
+    """
+    parse_error = result.get("parse_fehler")
+    return {
+        "llm_kategorie": result["kategorie"],
+        "llm_prioritaet": result["prioritaet"],
+        "llm_parse_fehler": "" if parse_error is None else bool(parse_error),
+        "llm_fehler": "",
+        "llm_prompt_tokens": result.get("prompt_tokens", ""),
+        "llm_completion_tokens": result.get("completion_tokens", ""),
+    }
+
+
+def error_columns(exc: Exception) -> dict:
+    """CSV-Spalten für ein Ticket, bei dem die LLM-Anfrage gescheitert ist.
+
+    Ohne Antwort gibt es nichts zu parsen. llm_parse_fehler bleibt deshalb leer.
+    """
+    return {
+        "llm_kategorie": "",
+        "llm_prioritaet": "",
+        "llm_parse_fehler": "",
+        "llm_fehler": type(exc).__name__,
+        "llm_prompt_tokens": "",
+        "llm_completion_tokens": "",
+    }
+
+
+def _print_progress(row: dict) -> None:
+    """Eine Zeile pro Ticket, damit ein langer LLM-Lauf nicht eingefroren wirkt."""
+    if row.get("llm_fehler"):
+        return  # Die Fehlerzeile hat evaluate_ticket() schon gedruckt.
+    llm = f"{row.get('llm_kategorie')}/{row.get('llm_prioritaet')}"
+    if row.get("llm_parse_fehler"):
+        llm += " (Parse-Fehler)"
+    print(
+        f"{row['id']}  gold {row['gold_kategorie']}/{row['gold_prioritaet']}  "
+        f"Regeln {row.get('regel_kategorie')}/{row.get('regel_prioritaet')}  "
+        f"LLM {llm}  {_decimal(row.get('llm_latenz_s', 0), 2)} s"
+    )
+
+
+# --- Auswertung --------------------------------------------------------------
+
+
 def accuracy(rows: list[dict], system: str, field: str) -> float:
-    """Anteil korrekter Vorhersagen, z. B. accuracy(rows, "llm", "kategorie")."""
-    hits = sum(1 for r in rows if r.get(f"{system}_{field}") == r[f"gold_{field}"])
-    return hits / len(rows) if rows else 0.0
+    """Anteil korrekter Vorhersagen, z. B. accuracy(rows, "llm", "kategorie").
+
+    Fehlende Vorhersagen (Endpunkt-Fehler) zählen als falsch.
+    """
+    if not rows:
+        return 0.0
+    hits = sum(1 for row in rows if row.get(f"{system}_{field}") == row[f"gold_{field}"])
+    return hits / len(rows)
+
+
+def majority_label(rows: list[dict], field: str) -> str:
+    """Häufigstes Gold-Label. So gut ist ein System, das immer dasselbe antwortet."""
+    return Counter(row[f"gold_{field}"] for row in rows).most_common(1)[0][0]
+
+
+def majority_accuracy(rows: list[dict], field: str) -> float:
+    """Accuracy der Mehrheitsklasse: die dümmste sinnvolle Vergleichszahl."""
+    label = majority_label(rows, field)
+    return sum(1 for row in rows if row[f"gold_{field}"] == label) / len(rows)
+
+
+def only_correct(rows: list[dict], system: str, other: str, field: str) -> list[str]:
+    """IDs der Tickets, die `system` richtig und `other` falsch klassifiziert."""
+    return [
+        row["id"]
+        for row in rows
+        if row.get(f"{system}_{field}") == row[f"gold_{field}"]
+        and row.get(f"{other}_{field}") != row[f"gold_{field}"]
+    ]
+
+
+def parse_error_hits(rows: list[dict], field: str) -> int:
+    """Treffer des LLM, die nur der Rückfall bei einem Parse-Fehler erzeugt hat.
+
+    Der Rückfall lautet Software / mittel, die häufigsten Gold-Labels. Diese
+    Treffer zählen in der Accuracy mit, so wie im Betrieb. Sie sind aber Zufall.
+    """
+    return sum(
+        1
+        for row in rows
+        if row.get("llm_parse_fehler") is True and row.get(f"llm_{field}") == row[f"gold_{field}"]
+    )
+
+
+def missed_urgent(rows: list[dict], system: str) -> list[str]:
+    """IDs der dringenden Tickets (Gold: hoch), die `system` nicht als hoch einstuft."""
+    return [
+        row["id"]
+        for row in rows
+        if row["gold_prioritaet"] == "hoch" and row.get(f"{system}_prioritaet") != "hoch"
+    ]
+
+
+def _median(rows: list[dict], key: str) -> float | None:
+    """Median einer Zahlenspalte. Leere Werte (z. B. nach Fehlern) fallen heraus."""
+    values = [row[key] for row in rows if isinstance(row.get(key), (int, float))]
+    return statistics.median(values) if values else None
+
+
+def _ids(ids: list[str]) -> str:
+    """Ticket-IDs als kommagetrennte Liste, für den Report."""
+    return ", ".join(ids) if ids else "keine"
+
+
+def _percent(value: float) -> str:
+    """Anteil in deutscher Schreibweise, z. B. 0.7 → "70 %"."""
+    return f"{value * 100:.0f} %"
+
+
+def _decimal(value: float, digits: int) -> str:
+    """Zahl mit Dezimalkomma, z. B. _decimal(3.333, 1) → "3,3". Die CSV behält den Punkt."""
+    return f"{value:.{digits}f}".replace(".", ",")
 
 
 def print_report(rows: list[dict], use_llm: bool) -> None:
-    print("\n" + "=" * 64)
-    print(f"EVALUIERUNG auf {len(rows)} Tickets (Golden Dataset)")
-    print("=" * 64)
-    print(f"{'':24}{'Kategorie':>12}{'Priorität':>12}{'Ø Latenz':>12}")
-    regel_lat = sum(r["regel_latenz_s"] for r in rows) / len(rows)
-    print(
-        f"{'Keyword-Regeln (VL 1)':24}"
-        f"{accuracy(rows, 'regel', 'kategorie'):>11.0%}"
-        f"{accuracy(rows, 'regel', 'prioritaet'):>12.0%}"
-        f"{regel_lat:>11.4f}s"
-    )
+    """Druckt Accuracy und Latenz je System und die Befunde für die Reflexion."""
+    systems = ["regel", "llm"] if use_llm else ["regel"]
+    print("\n" + "=" * REPORT_WIDTH)
+    points = _decimal(100 / len(rows), 1)
+    print(f"EVALUIERUNG auf {len(rows)} Tickets (1 Ticket = {points} Prozentpunkte)")
+    print("=" * REPORT_WIDTH)
+    _print_table(rows, systems)
+    print("-" * REPORT_WIDTH)
+    _print_findings(rows, systems)
     if use_llm:
-        llm_lat = sum(r["llm_latenz_s"] for r in rows) / len(rows)
+        _print_llm_details(rows)
+    print("=" * REPORT_WIDTH)
+
+
+def _print_table(rows: list[dict], systems: list[str]) -> None:
+    """Tabelle: Mehrheitsklasse als Vergleichswert, dann je System Accuracy und Latenz."""
+    print(f"{'System':36}{'Kategorie':>10}{'Priorität':>11}{'Latenz (Median)':>17}")
+    majority = (
+        f"Mehrheitsklasse: {majority_label(rows, 'kategorie')} / "
+        f"{majority_label(rows, 'prioritaet')}"
+    )
+    print(
+        f"{majority:36}{_percent(majority_accuracy(rows, 'kategorie')):>10}"
+        f"{_percent(majority_accuracy(rows, 'prioritaet')):>11}{'-':>17}"
+    )
+    for system in systems:
+        label = "Keyword-Regeln (VL 1)" if system == "regel" else f"LLM ({get_model()})"
         print(
-            f"{'LLM (' + get_model() + ')':24}"
-            f"{accuracy(rows, 'llm', 'kategorie'):>11.0%}"
-            f"{accuracy(rows, 'llm', 'prioritaet'):>12.0%}"
-            f"{llm_lat:>11.2f}s"
+            f"{label:36}{_percent(accuracy(rows, system, 'kategorie')):>10}"
+            f"{_percent(accuracy(rows, system, 'prioritaet')):>11}"
+            f"{_median_latency(rows, system):>17}"
         )
-    print("=" * 64)
+
+
+def _median_latency(rows: list[dict], system: str) -> str:
+    """Median der Latenz: Regeln in Millisekunden, LLM in Sekunden ohne Fehlerfälle."""
+    if system == "regel":
+        value = _median(rows, "regel_latenz_ms")
+        return "-" if value is None else f"{_decimal(value, 3)} ms"
+    value = _median([row for row in rows if not row.get("llm_fehler")], "llm_latenz_s")
+    return "-" if value is None else f"{_decimal(value, 2)} s"
+
+
+def _print_findings(rows: list[dict], systems: list[str]) -> None:
+    """Testdaten getrennt, übersehene dringende Tickets und die Unterschiede je Ticket."""
+    test_rows = [row for row in rows if row["id"] not in DEV_IDS]
+    if test_rows and len(test_rows) < len(rows):
+        parts = [
+            f"{SYSTEM_NAMES[system]} {_percent(accuracy(test_rows, system, 'kategorie'))} / "
+            f"{_percent(accuracy(test_rows, system, 'prioritaet'))}"
+            for system in systems
+        ]
+        print(f"Nur Testdaten ({len(test_rows)} Tickets ab T-1011): {', '.join(parts)}")
+
+    urgent = sum(1 for row in rows if row["gold_prioritaet"] == "hoch")
+    for system in systems:
+        missed = missed_urgent(rows, system)
+        name = SYSTEM_NAMES[system]
+        print(f"Dringend übersehen, {name}: {len(missed)} von {urgent} ({_ids(missed)})")
+
+    if "llm" in systems:
+        for field, name in (("kategorie", "Kategorie"), ("prioritaet", "Priorität")):
+            print(f"{name} nur Regeln richtig: {_ids(only_correct(rows, 'regel', 'llm', field))}")
+            print(f"{name} nur LLM richtig:    {_ids(only_correct(rows, 'llm', 'regel', field))}")
+
+
+def _print_llm_details(rows: list[dict]) -> None:
+    """Parse-Fehler, Endpunkt-Fehler und Tokens: das, was Accuracy allein verschweigt."""
+    endpoint_errors = sum(1 for row in rows if row.get("llm_fehler"))
+    thinking = os.environ.get("LLM_THINKING") or "Server-Default"
+    answered = [row for row in rows if not row.get("llm_fehler")]
+    # Ältere Varianten von classify_ticket_llm() melden keine Parse-Fehler. Dann
+    # stünde hier sonst „0 Parse-Fehler“, und Zufallstreffer blieben unsichtbar.
+    recorded = not answered or any(
+        isinstance(row.get("llm_parse_fehler"), bool) for row in answered
+    )
+    if recorded:
+        parse_errors = sum(1 for row in answered if row.get("llm_parse_fehler") is True)
+        parse_info = f"{parse_errors} Parse-Fehler"
+    else:
+        parse_info = "Parse-Fehler nicht erfasst"
+    print(f"LLM: {parse_info}, {endpoint_errors} Endpunkt-Fehler, Thinking: {thinking}")
+    if recorded:
+        print(
+            f"Parse-Fehler zufällig richtig: Kategorie {parse_error_hits(rows, 'kategorie')}, "
+            f"Priorität {parse_error_hits(rows, 'prioritaet')}"
+        )
+    prompt_tokens = _median(rows, "llm_prompt_tokens")
+    completion_tokens = _median(rows, "llm_completion_tokens")
+    if prompt_tokens is not None and completion_tokens is not None:
+        print(
+            f"LLM-Tokens pro Ticket (Median): {prompt_tokens:.0f} ein, "
+            f"{completion_tokens:.0f} aus"
+        )
 
 
 def write_csv(rows: list[dict], path: Path = RESULTS_PATH) -> None:
+    """Schreibt alle Zeilen als CSV, eine Spalte pro Messwert."""
+    fieldnames = list(dict.fromkeys(key for row in rows for key in row))
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-    print(f"Details: {path}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Triage-Evaluierung gegen Golden Dataset")
+def main(argv: list[str] | None = None) -> None:
+    """Kommandozeile: Tickets auswählen, messen, CSV schreiben, Report drucken."""
+    parser = argparse.ArgumentParser(description="Triage-Evaluierung gegen das Golden Dataset")
     parser.add_argument("--llm", action="store_true", help="zusätzlich das LLM evaluieren")
-    parser.add_argument("--limit", type=int, default=10, help="nur die ersten N Tickets (Default: 10)")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="nur die ersten N Tickets (Default: 10)"
+    )
     parser.add_argument("--all", action="store_true", help="alle Tickets evaluieren")
-    args = parser.parse_args()
+    parser.add_argument("--csv", type=Path, default=RESULTS_PATH, help="Zieldatei für die Details")
+    args = parser.parse_args(argv)
 
     rows = evaluate(use_llm=args.llm, limit=None if args.all else args.limit)
+    if not rows:
+        raise SystemExit("Keine Tickets ausgewertet. Prüft --limit.")
+    write_csv(rows, args.csv)  # zuerst sichern, dann auswerten
     print_report(rows, use_llm=args.llm)
-    write_csv(rows)
+    print(f"Details: {args.csv}")
 
 
 if __name__ == "__main__":

@@ -13,3 +13,16 @@ tmp
 .env
 .claude
 .continue/
+
+# Testabdeckung (pytest-cov, VL 9)
+.coverage
+.coverage.*
+htmlcov/
+
+# Arbeitsdateien aus den Labs: Vorher-nachher-Reports (VL 1), Messläufe (VL 3, VL 4).
+# Eigene Ergebnisse wie labs/vl03-entscheidung.md oder eval/eigene_angriffe.jsonl
+# bleiben bewusst sichtbar.
+report-*.txt
+messung-*.txt
+eval/lauf-*.csv
+eval/thinking-*.csv

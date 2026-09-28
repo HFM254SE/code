@@ -1,0 +1,4 @@
+# Dateien, die Shell-Schleifen in den Labs zeilenweise lesen (z. B.
+# labs/vl04-testfragen.txt), immer mit LF auschecken. Git for Windows setzt
+# sonst mit core.autocrlf=true CRLF, und jede Zeile endet auf \r.
+labs/*.txt text eol=lf

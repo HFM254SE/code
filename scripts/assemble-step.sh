@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Assembliert den kompletten Projektstand für einen Checkpoint.
 #
-# Kopiert common/, dann alle vorherigen Steps der Reihe nach,
-# dann den Ziel-Step selbst. So baut jeder Checkpoint automatisch
-# auf den vorherigen auf – steps/ muss nur noch den eigenen Delta enthalten.
+# Reihenfolge:
+#   1. common/ (Daten, Knowledge Base, Golden Set, SETUP.md, .gitignore)
+#   2. nur die labs/-Ordner aller vorherigen Steps laut steps.conf, damit
+#      frühere Anleitungen und Vorlagen im Branch bleiben
+#   3. der Ziel-Step komplett
+# Jeder Ordner unter steps/ ist deshalb ein vollständiger Code-Stand (src/,
+# tests/, requirements.txt, conftest.py). Nur labs/ wird vererbt. Dateien, die
+# in mehreren Steps gleich sind, liegen dort als identische Kopien.
 #
 # Nutzung:
 #   ./scripts/assemble-step.sh <step-name> <zielverzeichnis>
@@ -61,16 +66,19 @@ for s in "${STEPS[@]}"; do
   fi
 done
 
-# 3. Ziel-Step komplett kopieren (überschreibt ggf. labs/), ohne venv.
+# 3. Ziel-Step komplett kopieren (überschreibt ggf. labs/), ohne venv und ohne
+#    lokale Artefakte (Bytecode, pytest-Cache, Coverage-Daten).
 #    rsync bevorzugt; falls nicht vorhanden (z. B. schlanke Container) cp-Fallback.
 if command -v rsync >/dev/null 2>&1; then
-  rsync -a --exclude='venv' "$REPO_ROOT/steps/$STEP/" "$DEST"
+  rsync -a --exclude='venv' --exclude='.venv' --exclude='__pycache__' \
+    --exclude='.pytest_cache' --exclude='.coverage' "$REPO_ROOT/steps/$STEP/" "$DEST"
 else
   cp -R "$REPO_ROOT/steps/$STEP/." "$DEST"
-  rm -rf "$DEST/venv"
+  rm -rf "$DEST/venv" "$DEST/.venv" "$DEST/.pytest_cache" "$DEST/.coverage"
 fi
 
 # 4. Cleanup
 rm -rf "$DEST/common"
 rm -rf "$DEST/scripts"
 rm -rf "$DEST/steps"
+find "$DEST" -name '__pycache__' -type d -prune -exec rm -rf {} +

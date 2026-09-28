@@ -1,0 +1,9 @@
+Wie verbinde ich mich mit dem VPN?
+Mein Passwort ist abgelaufen
+Drucker druckt nicht
+Welche Laptops kann ich bestellen?
+Outlook synchronisiert nicht
+Ich brauche eine neue Software-Lizenz
+Fehlermeldung 0x80042109
+Seit dem letzten AnyConnect-Update ist das Internet auf meinem Firmengerät im Homeoffice quälend langsam und Videocalls brechen dauernd ab. Private Geräte im selben Heimnetz sind normal schnell. Ich vermute, der gesamte Traffic läuft jetzt durch den Tunnel statt nur der interne.
+VPN geht nicht

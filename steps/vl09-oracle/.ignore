@@ -1,0 +1,5 @@
+# Für Such-Werkzeuge auf ripgrep-Basis (opencode grep/glob/list, rg, auch die
+# Suche in VS Code): Die Lab-Anleitungen sind kein Teil des Codes. Ein Agent,
+# der sie beim Suchen findet, liest die Aufgabe mit, die ihr gerade prüft.
+# Für git hat diese Datei keine Bedeutung. Sie gehört ins Repo.
+/labs/

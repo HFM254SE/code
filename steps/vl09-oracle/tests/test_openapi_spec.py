@@ -1,13 +1,16 @@
-"""Strukturtests für die OpenAPI-Spec — offline, kein Server, keine Installation.
+"""Strukturtests für die OpenAPI-Spec: offline, kein Server, keine Installation.
 
-Prüft, dass die Spec self-consistent ist und zur Projektlogik passt (z. B.
+Prüft, dass die Spec in sich stimmig ist und zur Projektlogik passt (z. B.
 dass das Kategorie-Enum mit den Triage-Regeln übereinstimmt).
 
-Früher brauchte diese Datei PyYAML und benutzte `pytest.importorskip` —
-ohne PyYAML wurde das Modul also stillschweigend ÜBERSPRUNGEN, und "grün"
-hieß dann "nie gelaufen". Jetzt liest sie die Spec mit tools/specyaml.py aus
-der Standardbibliothek: kein pip install, und ein Skip kann sich nicht mehr
-als Erfolg tarnen.
+Früher brauchte diese Datei PyYAML und benutzte `pytest.importorskip`. Ohne
+PyYAML wurde das Modul also stillschweigend ÜBERSPRUNGEN, und "grün" hieß
+dann "nie gelaufen". Jetzt liest sie die Spec mit tools/specyaml.py aus der
+Standardbibliothek: kein pip install, und ein Skip kann sich nicht mehr als
+Erfolg tarnen.
+
+Die Zahl der Tests (4) ist Teil des Labs: `--bruecke` zeigt 4/4 und 3/4.
+Neue Tests zu den Werkzeugen stehen deshalb in tests/test_vl09_werkzeuge.py.
 """
 
 from pathlib import Path
@@ -34,7 +37,7 @@ def test_alle_erwarteten_pfade_vorhanden():
 
 
 def test_kategorie_enum_passt_zu_triage_regeln():
-    """Der Test, der in Teil 1 des Labs die Pointe trägt.
+    """Der Test, der in der Brücke von Teil 1 zu Teil 2 die Pointe trägt.
 
     Er vergleicht zwei unabhängige Repräsentationen derselben Fachlichkeit:
     das Enum in der Spec und die Keyword-Tabelle im Code. Genau deshalb eliminiert
@@ -42,8 +45,8 @@ def test_kategorie_enum_passt_zu_triage_regeln():
     """
     enum = set(_spec()["components"]["schemas"]["Kategorie"]["enum"])
     assert enum == set(CATEGORY_KEYWORDS), (
-        "Kategorie-Enum der Spec weicht von den Triage-Kategorien ab — "
-        "klassischer Spec-Drift (VL 9)!"
+        "Kategorie-Enum der Spec weicht von den Triage-Kategorien ab: "
+        "klassischer Spec Drift (VL 9)"
     )
 
 
@@ -54,7 +57,12 @@ def test_jede_operation_hat_operationid():
 
 
 def test_limit_hat_grenzen():
-    """Die Spec sagt 1..100 — der drifted server lässt die Grenzen weg."""
+    """Schützt die Spec selbst: Wer die Grenzen 1 bis 100 löscht, fällt hier auf.
+
+    Ob ein Server die Grenzen einhält, prüft dieser Test NICHT. Der
+    Drift-Server ignoriert sie, und dieser Test bleibt trotzdem grün. Das sieht
+    nur ein Laufzeit-Prüfer wie Schemathesis.
+    """
     params = _spec()["paths"]["/tickets"]["get"]["parameters"]
     limit = next(p for p in params if p["name"] == "limit")
     assert limit["schema"]["minimum"] == 1
